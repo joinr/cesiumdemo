@@ -4,3 +4,6 @@ target/
 /.classpath
 *.clj~
 checkouts/
+figwheel_server.log
+*.*~
+resources/public/js/dev
