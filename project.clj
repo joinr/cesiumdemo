@@ -20,9 +20,10 @@
   {:dev
    {:dependencies []
 
-    :plugins      [[lein-figwheel "0.5.15"]]
-    }}
-
+    :plugins      [[lein-figwheel "0.5.18" #_"0.5.15"]]}}
+                   
+  
+  
   :cljsbuild
   {:builds
    [{:id           "dev"
@@ -34,7 +35,7 @@
                     :output-dir           "resources/public/js/dev"
                     :asset-path           "js/dev"
                     :source-map-timestamp true}}
-
+    
     {:id           "min"
      :source-paths ["src/cljs"]
      :compiler     {:main            cesiumdemo.core
@@ -43,6 +44,6 @@
                     :output-dir      "resources/public/js/min"
                     :elide-asserts   true
                     :closure-defines {goog.DEBUG false}
-                    :pretty-print    false}}
+                    :pretty-print    false}}]})
 
-    ]})
+    

@@ -37,6 +37,14 @@
    -111.047063,44.476286,
    -111.05254,45.002073])
 
+(defn random-point []
+   [(- (rand-int 90) 89)
+    (- (rand-int 180) 179)])
+
+(defn random-coords [n]
+  (repeatedly n (fn []
+                   (random-point))))
+
 ;;probably useful to have an as-color....
 (def red (Cesium.Color.RED.withAlpha 0.5))
 (def black Cesium.Color.BLACK)
@@ -85,8 +93,8 @@
 (defn set-position! [e pos]
   (-> e .-position (set! pos)))
 
-(defn set-polyogon-position! [e pos]
-  )
+(defn set-polyogon-position! [e pos])
+  
 
 (defn add-entity! [v x]
   (let [es (.-entities v)]
@@ -119,11 +127,11 @@
 
 (defn fly-to!
   ([v e]
-    (-> v
-       (.flyTo e)
-       (.then (fn [result]
-                (when result
-                  (select-entity! v e))))))
+   (-> v
+      (.flyTo e)
+      (.then (fn [result]
+               (when result
+                 (select-entity! v e))))))
   ([v e offset]
    (-> v
        (.flyTo e offset)
@@ -203,19 +211,33 @@
   {:name "Citizens Bank Park",
    :position (Cesium.Cartesian3.fromDegrees -75.166493, 39.9060534),
    :point {
-            :pixelSize 5,
-            :color Cesium.Color.RED,
-            :outlineColor Cesium.Color.WHITE,
-            :outlineWidth 2
-            },
+           :pixelSize 5,
+           :color Cesium.Color.RED,
+           :outlineColor Cesium.Color.WHITE,
+           :outlineWidth 2}
+   ,
    :label {
-            :text "Citizens Bank Park",
-            :font "14pt monospace",
-            :style Cesium.LabelStyle.FILL_AND_OUTLINE,
-            :outlineWidth 2,
-            :verticalOrigin Cesium.VerticalOrigin.BOTTOM,
-            :pixelOffset    (Cesium.Cartesian2. 0 -9)
-           }})
+           :text "Citizens Bank Park",
+           :font "14pt monospace",
+           :style Cesium.LabelStyle.FILL_AND_OUTLINE,
+           :outlineWidth 2,
+           :verticalOrigin Cesium.VerticalOrigin.BOTTOM,
+           :pixelOffset    (Cesium.Cartesian2. 0 -9)}})
+
+(defn ->point [lat long]
+    {
+     :position (Cesium.Cartesian3.fromDegrees lat long),
+     :point {
+             :pixelSize 5,
+             :color Cesium.Color.RED,
+             :outlineColor Cesium.Color.WHITE,
+             :outlineWidth 2}
+     ,})
+ 
+(defn ->random-points [n]
+  (for [[lat lng] (random-coords n)]
+    (->point lat lng)))
+
 
 ;;tutorial only had // for th url, needed the full
 ;;https:// for the image to get grabbed.
