@@ -2,6 +2,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
                  [reagent "0.7.0"]
+                 [cljcolor "0.1.0-SNAPSHOT"]
                  #_[cesiumcljs "1.5.3-SNAPSHOT"]]
 
   :min-lein-version "2.5.3"

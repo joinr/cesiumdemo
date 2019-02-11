@@ -1,7 +1,6 @@
 (ns cesiumdemo.cesium
   (:require  [reagent.core :as r]
-             #_[cljsjs.Cesium :as cesium])
-  #_(:import [Cesium.Viewer]))
+             [cljcolor.core :as color]))
 
 
 ;;we'll maintain some state for our globe....
@@ -13,65 +12,54 @@
 (defn ->viewer [el {:keys [] :as opts}]
   (js/Cesium.Viewer. el (clj->js opts)))
 
-;;probably create a point protocol and
-;;extend it to vectors...
+;;aux functions
+(defn radians [x] (Cesium.Math.toRadians x))
 
+;;this doesn't work per the tutorial...
+(def +default-offset+
+  (Cesium.HeadingPitchRange.
+   (radians 90)
+   (radians -45)))
+
+(extend-protocol color/IColorVector
+  Cesium.Color
+  (color-vec [c] [(.-r c) (.-g c) (.-b c) (.-a c)]))
+
+(defprotocol ICartesian
+  (-as-cartesian [c]))
+
+;;probably create a point protocol and
+;;extend it to vectors, like as-cartesian
 (defn ^Cesium.Cartesian3 ->cartesian3 [x y z]
   (js/Cesium.Cartesian3. x y z))
 
+;;Also want coercions for degree sequences
+;;to cart 3 coord....
 (defn degrees->cart3 [xs]
   (js/Cesium.Cartesian3.fromDegreesArray
    (clj->js (vec xs))))
 
-(def wyoming-coords
-  [-109.080842,45.002073,
-   -105.91517,45.002073,
-   -104.058488,44.996596,
-   -104.053011,43.002989,
-   -104.053011,41.003906,
-   -105.728954,40.998429,
-   -107.919731,41.003906,
-   -109.04798,40.998429,
-   -111.047063,40.998429,
-   -111.047063,42.000709,
-   -111.047063,44.476286,
-   -111.05254,45.002073])
-
+;;Generate a random lat/long
+;;along the respective domains
+;;[-90 89]
+;;[-180 179]
 (defn random-point []
-   [(- (rand-int 90) 89)
-    (- (rand-int 180) 179)])
+  [(- (rand-int 90) 89)
+   (- (rand-int 180) 179)])
 
+;;n random coordinates.
 (defn random-coords [n]
   (repeatedly n (fn []
                    (random-point))))
 
+;;Generic color stuff
 ;;probably useful to have an as-color....
+;;We can get a simple color bridge, going
+;;from 
 (def red (Cesium.Color.RED.withAlpha 0.5))
 (def black Cesium.Color.BLACK)
 
-(def wyoming-spec
-  {:name  "Wyoming"
-   :polygon
-   {:hierarchy (degrees->cart3 wyoming-coords)
-    :height    0
-    :material  red
-    :outline    true,
-    :outlineColor  black}})
-
-;;alternate for polygon hierarchy, according to
-;;https://groups.google.com/forum/#!topic/cesium-dev/z24cXD5mBgs
-(def wyoming-spec-constant
-  {:name  "Wyoming"
-   :polygon
-   {:hierarchy (Cesium.ConstantProperty.
-                (Cesium.PolygonHierarchy.
-                 (clj->js (degrees->cart3 wyoming-coords))))
-    :height    0
-    :material  red
-    :outline    true,
-    :outlineColor  black}})
-
-
+;;Entity Operations
 (defn entities []
   (->> @view :current .-entities))
 
@@ -80,6 +68,10 @@
 
 (defn track-entity! [v e]
   (-> v .-trackedEntity (set! e)))
+
+(defn add-entity! [v x]
+  (let [es (.-entities v)]
+    (.add es x)))
 
 (defn add-entities! [v xs]
   (reduce (fn [acc e]
@@ -93,24 +85,26 @@
 (defn set-position! [e pos]
   (-> e .-position (set! pos)))
 
-(defn set-polyogon-position! [e pos])
-  
+(defn set-height! [e h]
+  (-> e .-polygon .-height (set! h)))
 
-(defn add-entity! [v x]
-  (let [es (.-entities v)]
-    (.add es x)))
+(defn set-material! [e m]
+  (-> e .-polygon .-material (set! m)))
+
+(defn extrude-height! [e h]
+  (-> e .-polygon .-extrudedHeight (set! h)))
+
+(defn set-description! [e d]
+  (-> e .-description (set! d)))
 
 ;; var heading = Cesium.Math.toRadians(90);
 ;; var pitch = Cesium.Math.toRadians(-30);
-;; viewer.zoomTo(wyoming, new Cesium.HeadingPitchRange(heading, pitch));
 
-(defn radians [x] (Cesium.Math.toRadians x))
+;;Primitive Operations
 
-(def +default-offset+
-  (Cesium.HeadingPitchRange.
-   (radians 90)
-   (radians -45)))
 
+
+;;View API (zooming, flying, selecting)
 (defn zoom-to!
   ([v]
    (.zoomTo v (.-entities v)))
@@ -119,11 +113,10 @@
   ([v e offset]
    (.zoomTo v e offset)))
 
-;; viewer.flyTo(wyoming).then(function(result){
-;;     if (result) {
-;;         viewer.selectedEntity = wyoming;
-;;     }
-;; });
+;;look at decoupling the
+;;promise, or messing
+;;with the promise chain
+;;via a macro or something.
 
 (defn fly-to!
   ([v e]
@@ -138,91 +131,6 @@
        (.then (fn [result]
                 (when result
                   (select-entity! v e)))))))
-  
-(defn set-height! [e h]
-  (-> e .-polygon .-height (set! h)))
-
-(defn set-material! [e m]
-  (-> e .-polygon .-material (set! m)))
-
-(defn extrude-height! [e h]
-  (-> e .-polygon .-extrudedHeight (set! h)))
-
-;;todo replace with hiccup variant...
-(def wyoming-description
-  "<img
-  width='50%'
-  style='float:left; margin: 0 1em 1em 0;'
-  src='//cesiumjs.org/tutorials/Visualizing-Spatial-Data/images/Flag_of_Wyoming.svg'/>
-<p>
-  Wyoming is a state in the mountain region of the Western 
-  United States.
-</p>
-<p>
-  Wyoming is the 10th most extensive, but the least populous 
-  and the second least densely populated of the 50 United 
-  States. The western two thirds of the state is covered mostly 
-  with the mountain ranges and rangelands in the foothills of 
-  the eastern Rocky Mountains, while the eastern third of the 
-  state is high elevation prairie known as the High Plains. 
-  Cheyenne is the capital and the most populous city in Wyoming, 
-  with a population estimate of 62,448 in 2013.
-</p>
-<p>
-  Source: 
-  <a style='color: WHITE'
-    target='_blank'
-    href='http://en.wikipedia.org/wiki/Wyoming'>Wikpedia</a>
-</p>';")
-
-
-(defn set-description! [e d]
-  (-> e .-description (set! d)))
-
-(defn tut
-  ([spec]
-   (let [v (-> @view :current)
-         e (-> v (add-entity! (clj->js spec)))
-         _ (zoom-to! v e)]
-     e))
-  ([] (tut wyoming-spec)))
-
-(defn tut2 [e]
-  (do (set-height! e 200000)
-      (extrude-height! e 250000)
-      e))
-
-(defn tut3 [e]
-  (set-description! e wyoming-description))
-
-(defn tut4 [e]
-  (let [heading (radians 90)
-        pitch   (radians -30)]
-    (-> @view
-        :current
-        (zoom-to! e (Cesium.HeadingPitchRange. heading pitch)))))
-
-;;this doesn't work with polygons.
-(defn tut5 [e]
-  (do (set-position! e (degrees->cart3 [-107.724 42.68]))
-      (-> @view :current (track-entity! e))))
-
-(def point-spec
-  {:name "Citizens Bank Park",
-   :position (Cesium.Cartesian3.fromDegrees -75.166493, 39.9060534),
-   :point {
-           :pixelSize 5,
-           :color Cesium.Color.RED,
-           :outlineColor Cesium.Color.WHITE,
-           :outlineWidth 2}
-   ,
-   :label {
-           :text "Citizens Bank Park",
-           :font "14pt monospace",
-           :style Cesium.LabelStyle.FILL_AND_OUTLINE,
-           :outlineWidth 2,
-           :verticalOrigin Cesium.VerticalOrigin.BOTTOM,
-           :pixelOffset    (Cesium.Cartesian2. 0 -9)}})
 
 (defn ->point [lat long]
     {
@@ -231,27 +139,11 @@
              :pixelSize 5,
              :color Cesium.Color.RED,
              :outlineColor Cesium.Color.WHITE,
-             :outlineWidth 2}
-     ,})
+             :outlineWidth 2}})    
  
 (defn ->random-points [n]
   (for [[lat lng] (random-coords n)]
     (->point lat lng)))
-
-
-;;tutorial only had // for th url, needed the full
-;;https:// for the image to get grabbed.
-(def billboard-spec
-  (-> point-spec
-      (dissoc :point)
-      (assoc :billboard
-             {:image "https://cesiumjs.org/tutorials/Visualizing-Spatial-Data/images/Philadelphia_Phillies.png"
-              :width 64,
-              :height 64})))
-
-;;var citizensBankPark = viewer.entities.add();
-(defn point-tutorial []
-  (tut point-spec))
 
 ;;basic reagent component.
 (defn cesium-viewer [{:keys [name opts]}]
