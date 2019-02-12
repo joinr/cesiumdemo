@@ -2,8 +2,8 @@
   (:require
    [reagent.core :as reagent]
    #_[cljsjs.Cesium]
-   [cesiumdemo.cesium :as ces]
-   ))
+   [cesiumdemo.widget :as ces]))
+   
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,8 +36,8 @@
 (defn dev-setup []
   (when ^boolean js/goog.DEBUG
     (enable-console-print!)
-    (println "dev mode")
-    ))
+    (println "dev mode")))
+    
 
 (defn reload []
   (reagent/render [page app-state]

@@ -1,16 +1,10 @@
 (ns cesiumdemo.cesium
   (:require  [reagent.core :as r]
-             [cljcolor.core :as color]))
+             [cesiumdemo.colors :as colors]))
 
 
-;;we'll maintain some state for our globe....
-(defonce view
-  (r/atom {}))
-
-;;var viewer = new Cesium.Viewer('cesiumContainer');
-;;need to add options....
-(defn ->viewer [el {:keys [] :as opts}]
-  (js/Cesium.Viewer. el (clj->js opts)))
+(def ^:const +wgs-84+
+  Cesium.Ellipsoid.WGS84)
 
 ;;aux functions
 (defn radians [x] (Cesium.Math.toRadians x))
@@ -21,23 +15,103 @@
    (radians 90)
    (radians -45)))
 
-(extend-protocol color/IColorVector
-  Cesium.Color
-  (color-vec [c] [(.-r c) (.-g c) (.-b c) (.-a c)]))
-
+;;basic cesium stuff
 (defprotocol ICartesian
-  (-as-cartesian [c]))
+  (-as-cartesian [c])) 
+
+#_(defn degree-heights->carts)
+
+;;this lets us use vectors
+;;interchangably with cartesian
+;;types in cesium.
+(extend-protocol ICartesian
+  Cesium.Cartesian3
+  (-as-cartesian [c] c)
+  Cesium.Cartesian2
+  (-as-cartesian [c] c)
+  Cesium.Cartesian4
+  (-as-cartesian [c] c)
+  cljs.core.PersistentVector
+  (-as-cartesian [c]
+    (case (count c)
+      2 (let [[x y] c]
+          (Cesium.Cartesian2. x y))
+      3 (let [[x y z] c]
+          (Cesium.Cartesian3. x y z))
+      4 (let [[a b c d] c]
+          (Cesium.Cartesian3. a b c d)))))  
 
 ;;probably create a point protocol and
 ;;extend it to vectors, like as-cartesian
-(defn ^Cesium.Cartesian3 ->cartesian3 [x y z]
-  (js/Cesium.Cartesian3. x y z))
+(defn ->cartesian 
+  ([x y]
+   (Cesium.Cartesian2. x y))
+  ([x y z]
+   (Cesium.Cartesian3. x y z))
+  ([x y z w]
+   (Cesium.Cartesian4. x y z w)))
+
+(defn degrees->cartesian 
+  ([lat long height ellipsoid]
+   (Cesium.Cartesian3.fromDegrees lat long height ellipsoid))
+  ([lat long height]
+   (degrees->cartesian lat long height +wgs-84+))  
+  ([lat long]
+   (degrees->cartesian lat long 0 +wgs-84+)))
+
+(defn radians->cartesian 
+  ([lat long height ellipsoid]
+   (Cesium.Cartesian3.fromRadians lat long height ellipsoid))
+  ([lat long height]
+   (degrees->cartesian lat long height +wgs-84+))  
+  ([lat long]
+   (degrees->cartesian lat long 0 +wgs-84+)))
 
 ;;Also want coercions for degree sequences
 ;;to cart 3 coord....
 (defn degrees->cart3 [xs]
   (js/Cesium.Cartesian3.fromDegreesArray
-   (clj->js (vec xs))))
+   (clj->js (vec xs))))  
+
+;;more generic, data-driven version
+;;since the only version that supports
+;;this is cart3....we can get away.
+;;Most of the cesium examples show
+;;the Array methods (i.e. ingest and
+;;return js Arrays).
+(defn degrees->cartesians 
+  "Given a sequence of [lat1, long1, lat2, long2] pairs
+   or [lat1, long1, height1, lat2, long2, height2] triples
+   coerces to a Cartesian3 based on the specified encoding
+   and optional ellipsoid.  lat/long are encoded as degrees"
+  ([n xs]
+   (degrees->cartesians n +wgs-84+ xs))
+  ([n ellipsoid xs]
+   (let [f (case n 
+             2  (fn [lat long]
+                  (degrees->cartesian lat long 0 ellipsoid))
+             3  (fn [lat long height]
+                  (degrees->cartesian lat long 0 ellipsoid)))]
+     (->> xs 
+          (partition n)
+          (map #(apply f %))))))
+
+(defn radians->cartesians 
+  "Given a sequence of [lat1, long1, lat2, long2] pairs
+   or [lat1, long1, height1, lat2, long2, height2] triples
+   coerces to a Cartesian3 based on the specified encoding
+   and optional ellipsoid.  lat/long are encoded as radians"
+  ([n xs]
+   (radians->cartesians n +wgs-84+ xs))
+  ([n ellipsoid xs]
+   (let [f (case n 
+             2  (fn [lat long]
+                  (radians->cartesian lat long 0 ellipsoid))
+             3  (fn [lat long height]
+                  (radians->cartesian lat long 0 ellipsoid)))]
+     (->> xs 
+          (partition n)
+          (map #(apply f %))))))
 
 ;;Generate a random lat/long
 ;;along the respective domains
@@ -59,9 +133,14 @@
 (def red (Cesium.Color.RED.withAlpha 0.5))
 (def black Cesium.Color.BLACK)
 
+
+;;we can define a protocol here...
+;;might be useful if we wrap the viewer object
+;;and delegate.
+
 ;;Entity Operations
-(defn entities []
-  (->> @view :current .-entities))
+(defn entities [v]
+  (-> v .-entities))
 
 (defn select-entity! [v e]
   (-> v .-selectedEntity (set! e)))
@@ -145,23 +224,4 @@
   (for [[lat lng] (random-coords n)]
     (->point lat lng)))
 
-;;basic reagent component.
-(defn cesium-viewer [{:keys [name opts]}]
-  (let [vw (keyword (str name "-view"))]
-    (r/create-class
-     {:display-name (str name)
-      :reagent-render (fn [] [:div])
-      :component-did-mount
-      (fn [this]
-        (let [v (->viewer (r/dom-node this) opts)
-              _ (swap! view assoc :current v)]
-          v))
-      #_:component-did-update
-      #_(fn [this]
-          (when-let [view (get @app-state vw)]
-            (.update view)))
-      #_:component-will-update
-      #_(fn [this]
-          (let [view (chart {:el (r/dom-node this)})
-                _    (swap! app-state assoc :view view)]
-            (.update view)))})))
+

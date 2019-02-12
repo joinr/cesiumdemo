@@ -1,7 +1,12 @@
 ;;a collection of the entity creation
 ;;API tutorials from the official
 ;;cesium website.
-(ns cesiumdemo.tutorials)
+(ns cesiumdemo.tutorials
+  (:require [cesiumdemo.cesium :as ces 
+             :refer [red black degrees->cart3 add-entity! zoom-to! set-height!
+                     extrude-height! set-description! radians set-position! track-entity!]]
+                     
+            [cesiumdemo.widget :as w :refer [view]]))
 
 
 (def wyoming-coords
@@ -17,7 +22,6 @@
    -111.047063,42.000709,
    -111.047063,44.476286,
    -111.05254,45.002073])
-
 
 (def wyoming-spec
   {:name  "Wyoming"
@@ -40,8 +44,6 @@
     :material  red
     :outline    true,
     :outlineColor  black}})
-
-
 
 ;;todo replace with hiccup variant...
 (def wyoming-description
