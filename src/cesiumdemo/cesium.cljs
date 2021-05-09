@@ -1,6 +1,6 @@
 (ns cesiumdemo.cesium
   (:require  [reagent.core :as r]
-             [cesiumdemo.colors :as colors]))
+             #_[cesiumdemo.colors :as colors]))
 
 
 (def ^:const +wgs-84+
