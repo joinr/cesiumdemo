@@ -2,4 +2,5 @@
 ;;^{:open-url "http://localhost:[[server-port]]/admin.html"}
 {:main cesiumdemo.core
  :output-to  "resources/public/js/app.js"
- :output-dir "resources/public/js/dev/"}
+ :output-dir "resources/public/js/dev"
+ :asset-path "js/dev"}
