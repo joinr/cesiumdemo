@@ -225,3 +225,7 @@
     (->point lat lng)))
 
 
+(defn load-czml! [coll]
+  (let [p (js/Cesium.CzmlDataSource.load coll)]
+    (.add  (.-dataSources (@ces/view :current))
+           p)))

@@ -35,3 +35,17 @@
           (let [view (chart {:el (r/dom-node this)})
                 _    (swap! app-state assoc :view view)]
             (.update view)))})))
+
+
+;;stateful API for working with a "Single" current view....
+(defn load-czml! [coll]
+  (let [p (js/Cesium.CzmlDataSource.load coll)]
+    (.add  (.-dataSources (@view :current))
+           p)))
+
+(defn load-kml! [path]
+  (let [v (@view :current)
+        p (js/Cesium.KmlDataSource.load path #js{:camera (.. v -scene -camera)
+                                                 :canvas (.. v -scene -canvas)})]
+    (.add  (.-dataSources (@view :current))
+           p)))

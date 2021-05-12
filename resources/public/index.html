@@ -1,11 +1,5 @@
 <!doctype html>
 <html lang="en">
-    <!--
-         <script type="text/javascript">cesiumdemo.core.main();</script>
-         <script src="js/app.js"  type="text/javascript"></script>
-         
-         <!script src="Cesium/Cesium.js"></script>
-    -->
     <link href="CesiumUnminified/Widgets/widgets.css" rel="stylesheet">
     <script src="CesiumUnminified/Cesium.js"></script>
     <head>
@@ -13,42 +7,7 @@
     </head>
     <body>
         <div id="app"></div>
-        
-        <script>
-         //Initialize the viewer widget with several custom options and mixins.
-         var viewer = new Cesium.Viewer('app', {
-             //Start in Columbus Viewer
-             sceneMode : Cesium.SceneMode.COLUMBUS_VIEW,
-             //Use Cesium World Terrain
-             terrainProvider : false,
-             //Hide the base layer picker
-             baseLayerPicker : false,
-             //Use OpenStreetMaps
-             imageryProvider : new Cesium.OpenStreetMapImageryProvider({
-                 url : 'https://a.tile.openstreetmap.org/'
-             }),
-             skyBox : new Cesium.SkyBox({
-                 sources : {
-                     positiveX : 'stars/TychoSkymapII.t3_08192x04096_80_px.jpg',
-                     negativeX : 'stars/TychoSkymapII.t3_08192x04096_80_mx.jpg',
-                     positiveY : 'stars/TychoSkymapII.t3_08192x04096_80_py.jpg',
-                     negativeY : 'stars/TychoSkymapII.t3_08192x04096_80_my.jpg',
-                     positiveZ : 'stars/TychoSkymapII.t3_08192x04096_80_pz.jpg',
-                     negativeZ : 'stars/TychoSkymapII.t3_08192x04096_80_mz.jpg'
-                 }
-             }),
-             // Show Columbus View map with Web Mercator projection
-             mapProjection : new Cesium.WebMercatorProjection()
-         });
-
-         //Add basic drag and drop functionality
-         viewer.extend(Cesium.viewerDragDropMixin);
-
-         //Show a pop-up alert if we encounter an error when processing a dropped file
-         viewer.dropError.addEventListener(function(dropHandler, name, error) {
-             console.log(error);
-             window.alert(error);
-         });
-        </script>
-  </body>
+        <script src="js/app.js"  type="text/javascript"></script>
+        <script type="text/javascript">cesiumdemo.core.main();</script>
+    </body>
 </html>
