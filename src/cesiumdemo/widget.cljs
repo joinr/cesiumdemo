@@ -49,3 +49,17 @@
                                                  :canvas (.. v -scene -canvas)})]
     (.add  (.-dataSources (@view :current))
            p)))
+
+(defn load-geojson! [path & {:keys [stroke fill strokeWidth] :as style}]
+  (let [style (if style style
+                  {:stroke Cesium.Color.BLACK
+                   :fill  (js/Cesium.Color.GREY.withAlpha 0.5),
+                   :strokeWidth 3})
+        v (@view :current)
+        p (js/Cesium.GeoJsonDataSource.load path #js{:camera (.. v -scene -camera)
+                                                     :canvas (.. v -scene -canvas)
+                                                     :stroke (style :stroke)
+                                                     :fill (style :fill)
+                                                     :strokeWidth (style :strokeWidth)} style)]
+    (.add  (.-dataSources (@view :current))
+           p)))
