@@ -13,7 +13,14 @@
 (defonce app-state
   (reagent/atom {}))
 
+(def +now+ (new js/Date))
+(defn add-days [from n]
+  (let [res (new js/Date from)
+        _  (.setDate res (+ (.getDate res ) n))]
+    res))
 
+(defn ->jd [d]
+  (js/Cesium.JulianDate.fromDate d))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Page
@@ -43,12 +50,14 @@
                   (.getElementById js/document "app")))
 
 
-(defn ->czml-packets [xs]
-  (clj->js
-   (concat [{:id "document"
-             :name "CZML Point"
-             :version "1.0"}]
-           xs)))
+(defn ->czml-packets
+  ([packet-name xs]
+   (clj->js
+    (concat [{:id "document"
+              :name packet-name
+              :version "1.0"}]
+            xs)))
+  ([xs] (->czml-packets (gensym "packet") xs)))
 
 (def czml
   (clj->js ;;have to recursively do this...
@@ -96,14 +105,14 @@
    :point {:color {:rgba [58, 158, 85 255] }
            :outlineColor {:rgba [0 0 0 255]}
            :outlineWidth 1
-           :pixelSize 10}
+           :pixelSize 20}
    :properties m})
 
 (defn forts! []
-  (ces/load-czml! (->czml-packets (map ->czml-origin (origins)))))
+  (ces/load-czml! (->czml-packets "forts" (map ->czml-origin (origins)))))
 
 (defn ports! []
-  (ces/load-czml! (->czml-packets (map ->czml-poe d/ports))))
+  (ces/load-czml! (->czml-packets "ports" (map ->czml-poe d/ports))))
 
 (defn states! []
   (ces/load-geojson! "ne_10m_us_states.topojson"))
@@ -156,8 +165,24 @@
    [(equipment-movement from to start stop)
     (pax-movement from to start stop)]))
 
-(defn random-movements [n]
-  (->czml-packets (apply concat (repeatedly n random-movement))))
+(defn time-based-movement
+  [start duration mv]
+  #_(let [pos1 (-> mv :polyline)])
+  (assoc mv :availability (->jd start)))
+
+(defn random-time [init span]
+  (str (->jd (add-days init (rand-int span)))
+             "/"
+             (->jd (add-days init 1000))))
+
+(defn random-movements
+  ([n]
+   (->czml-packets "moves" (apply concat (repeatedly n random-movement))))
+  ([start n]
+   (->> (repeatedly n #(let [t (str (random-time start 180))]
+                         (mapv (fn [r] (assoc r :availability t)) (random-movement))))
+        (apply concat)
+        (->czml-packets "moves"))))
 
 (defn layers! []
   (do (forts!)
@@ -167,8 +192,25 @@
 (defn moves! []
   (ces/load-czml! (random-movements 3000)))
 
-(defn tada! [] (do (layers!) (moves!)))
+(defn timed-random-moves! []
+  (ces/load-czml! (random-movements +now+ 3000)))
 
+(defn tada!       [] (do (layers!) (moves!)))
+(defn tada-timed! [] (do (layers!) (timed-random-moves!)))
+
+(defn get-layers! []
+  (-> @ces/view :current .-dataSources))
+
+(defn layer-names []
+  (for [v (-> @ces/view :current .-dataSources .-_dataSources)] (.-name v)))
+
+(defn get-layer! [id]
+  (-> (get-layers!) (.getByName id) first))
+
+(defn drop-layer! [id]
+  (let [l   (get-layers!)
+        tgt (first (.getByName l id))]
+    (.remove l tgt true)))
 
 (defn ^:export main []
   (dev-setup)

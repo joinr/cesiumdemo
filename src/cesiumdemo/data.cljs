@@ -645,7 +645,7 @@
   :lat 34.208149,
   :long -77.949758}])
 
-(def ports (vec (for [p ports] (assoc p :long-name (str (p :city) "-" (p :terminal))))))
+(def ports (vec (for [p base-ports] (assoc p :long-name (str (p :city) "-" (p :terminal))))))
 
 (def bases
   [{:lat 39.38973326,
