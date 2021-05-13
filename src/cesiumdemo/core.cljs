@@ -22,18 +22,30 @@
 (defn ->jd [d]
   (js/Cesium.JulianDate.fromDate d))
 
+(defn ->button [id on-click label]
+  [:button.cesium-button {:id id :on-click on-click}
+   label])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Page
 
 (defn cesium-root []
   (let [_ (js/console.log "Starting the cesium-root")]
     (fn []
-      [:div {:class "fullSize"}
+      [:div.cesiumContainer {:class "fullSize"}
        [ces/cesium-viewer {:name "cesium"}]])))
 
+(declare clear-moves!)
+(declare random-moves!)
+
 (defn page [ratom]
-  [:div "Welcome to reagent-figwheel."]
-  [cesium-root])
+  [:div
+   [cesium-root]
+   [:div.controlPanel
+    [:button.cesium-button {:id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]]])
 
 
 
@@ -101,7 +113,7 @@
 (defn ->czml-poe [{:keys [lat long long-name] :as m}]
   {:id   long-name
    :name long-name
-   :position {:cartographicDegrees [long lat 0]}
+   :position {:cartographicDegrees [long lat 100]}
    :point {:color {:rgba [58, 158, 85 255] }
            :outlineColor {:rgba [0 0 0 255]}
            :outlineWidth 1
@@ -185,9 +197,9 @@
         (->czml-packets "moves"))))
 
 (defn layers! []
-  (do (forts!)
-      (ports!)
-      (states!)))
+  (do (states!)
+      (forts!)
+      (ports!)))
 
 (defn moves! []
   (ces/load-czml! (random-movements 3000)))
@@ -214,4 +226,10 @@
 
 (defn ^:export main []
   (dev-setup)
-  (reload))
+  (reload)
+  (layers!))
+
+(defn clear-moves! []
+  (drop-layer! "moves"))
+(defn random-moves! []
+  (timed-random-moves!))
