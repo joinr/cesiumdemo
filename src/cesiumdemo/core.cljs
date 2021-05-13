@@ -14,6 +14,7 @@
   (reagent/atom {}))
 
 (def +now+ (new js/Date))
+
 (defn add-days [from n]
   (let [res (new js/Date from)
         _  (.setDate res (+ (.getDate res ) n))]
@@ -33,7 +34,7 @@
   (let [_ (js/console.log "Starting the cesium-root")]
     (fn []
       [:div.cesiumContainer {:class "fullSize"}
-       [ces/cesium-viewer {:name "cesium"}]])))
+       [ces/cesium-viewer {:name "cesium" :opts {:skyBox false}}]])))
 
 (declare clear-moves!)
 (declare random-moves!)
@@ -169,6 +170,31 @@
                 :width 1
                 :clampToGround false}}))
 
+(defn movement->growing [mv start stop]
+  (let [t1     (str (->jd start))
+        t2     (str (->jd stop))
+        t3     (str (->jd (add-days stop 365)))
+        from   (str (gensym "from"))
+        to     (str (gensym "target"))
+        avail  (str t1 "/" t3)
+        {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
+        source {:id from
+                :name from
+                :availability avail
+                :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}}
+        target {:id   to
+                :name to
+                :availability avail
+                :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
+                                                             (into [t2] (drop 3 cartographicDegrees))
+                                                             (into [t3] (drop 3 cartographicDegrees))))
+                           :interpolationAlgorithm "LAGRANGE"}}]
+    [source
+     target
+     (-> mv
+      (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
+      (assoc :availability avail))]))
+
 
 (defn random-movement []
   (let [edge (rand-nth (keys connections))
@@ -179,8 +205,8 @@
 
 (defn time-based-movement
   [start duration mv]
-  #_(let [pos1 (-> mv :polyline)])
-  (assoc mv :availability (->jd start)))
+  (let [pos1 (-> mv :polyline)]
+    (movement->growing mv start  (add-days start duration))))
 
 (defn random-time [init span]
   (str (->jd (add-days init (rand-int span)))
@@ -191,8 +217,9 @@
   ([n]
    (->czml-packets "moves" (apply concat (repeatedly n random-movement))))
   ([start n]
-   (->> (repeatedly n #(let [t (str (random-time start 180))]
-                         (mapv (fn [r] (assoc r :availability t)) (random-movement))))
+   (->> (repeatedly n #(let [tstart   (add-days start (rand-int 180))
+                             duration (rand-int 15)]
+                         (mapcat (fn [mv] (time-based-movement tstart duration mv)) (random-movement))))
         (apply concat)
         (->czml-packets "moves"))))
 
@@ -225,6 +252,7 @@
     (.remove l tgt true)))
 
 (defn ^:export main []
+  (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
   (dev-setup)
   (reload)
   (layers!))

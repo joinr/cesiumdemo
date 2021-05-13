@@ -10,6 +10,12 @@
 (defonce view
   (r/atom {}))
 
+
+(defn set-extents! [x1 y1 x2 y2]
+  (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
+    (set! js/Cesium.Camera.DEFAULT_VIEW_RECTANGLE  extent)
+    (set! js/Cesium.Camera.DEFAULT_VIEW_FACTOR 0)))
+
 ;;var viewer = new Cesium.Viewer('cesiumContainer');
 ;;need to add options....
 (defn ->viewer [el {:keys [] :as opts}]
