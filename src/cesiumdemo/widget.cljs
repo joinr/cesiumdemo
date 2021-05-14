@@ -21,6 +21,8 @@
 (defn ->viewer [el {:keys [] :as opts}]
   (js/Cesium.Viewer. el (clj->js opts)))
 
+(defn clock [] (-> view deref :current .-clock))
+
 ;;basic reagent component.
 (defn cesium-viewer [{:keys [name opts]}]
   (let [vw (keyword (str name "-view"))]

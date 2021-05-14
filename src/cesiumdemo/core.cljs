@@ -20,8 +20,15 @@
         _  (.setDate res (+ (.getDate res ) n))]
     res))
 
+(defn add-jdays [from n]
+  (let [res (.clone from)
+        _   (js/Cesium.JulianDate.addDays res n res)]
+    res))
+
 (defn ->jd [d]
   (js/Cesium.JulianDate.fromDate d))
+
+(def +jnow+ (->jd +now+))
 
 (defn ->button [id on-click label]
   [:button.cesium-button {:id id :on-click on-click}
@@ -154,7 +161,7 @@
      :name arc
      :polyline {:positions {:cartographicDegrees (mapv jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba [255 0 0 200]}}}
+                :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
                 :width 1
                 :clampToGround false}}))
 
@@ -166,7 +173,7 @@
      :name arc
      :polyline {:positions {:cartographicDegrees (mapv jitter- [(start :long) (start :lat) 100000
                                                                (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba [255, 165, 0, 200]}}}
+                :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
                 :width 1
                 :clampToGround false}}))
 
@@ -240,6 +247,9 @@
 (defn get-layers! []
   (-> @ces/view :current .-dataSources))
 
+(defn imagery-layers []
+  (-> @ces/view :current .-imageryLayers))
+
 (defn layer-names []
   (for [v (-> @ces/view :current .-dataSources .-_dataSources)] (.-name v)))
 
@@ -251,6 +261,29 @@
         tgt (first (.getByName l id))]
     (.remove l tgt true)))
 
+(def c-time (reagent/atom 0))
+
+;;(.addEventListener (.-onTick (ces/clock)) (fn [e] (let [t (.-currentTime  (ces/clock))] (reset! c-time t) )))
+
+(defn url->xyz [url]
+  (js/Cesium.UrlTemplateImageryProvider. #js{:url url}))
+
+(defn base-layer []
+  (.get (imagery-layers) 0))
+
+(defn xyz-provider [url]
+  (url->xyz url))
+
+(def local-layers
+  {:blue          (xyz-provider "layers/bm5/{z}/{x}/{y}.png")
+   :virtual-earth (xyz-provider "layers/bingve/{z}/{x}/{y}.png")})
+
+(defn set-imagery [provider]
+  (let [layers   (imagery-layers)
+        base     (base-layer)
+        _        (.remove layers base)]
+    (.addImageryProvider layers provider)))
+
 (defn ^:export main []
   (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
   (dev-setup)
@@ -261,3 +294,5 @@
   (drop-layer! "moves"))
 (defn random-moves! []
   (timed-random-moves!))
+
+
