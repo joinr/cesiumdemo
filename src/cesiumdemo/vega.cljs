@@ -71,8 +71,8 @@
 (def dummy-data
   (clj->js
    (vec (for [i (range 10)
-              t  ["a" "b"]]
-          {:x i
+              t  ["pax" "b"]]
+          {:c-day i
            :trend t
            :value  (case t
                      "a" (* i 2)
@@ -99,14 +99,32 @@
   (clj->js
    {;"$schema" "https://vega.github.io/schema/vega-lite/v5.json",
     "width" 300, "height" 200,
-    "data"  {"values" init-data},
+    "data"  {"name"   "table"
+             ;"values" init-data
+             },
     "mark" "area",
-    "encoding" {(or x-label "x") {"field" x},
-                (or y-label "y") {"field" "value" "aggregate" "sum"}
-                (or trend-label "trend") {
-                         "field" "trend" #_"series",
+    "encoding" {"x"  {"field" x},
+                "y"  {"field" y "aggregate" "sum"}
+                "color"  {
+                         "field" trend #_"series",
                          "scale" {"scheme" "category20b"}
-                         }}}))
+                                          }}}))
+
+(def equipment-spec
+  #js {:width 300, :height 200,
+       :data 
+       #js {:name "table"
+            #_ #_:values #js [#js {:c-day 0, :quantity 0, :trend "pax"}
+                         #js {:c-day 0, :quantity 0, :trend "equipment"}]},
+       :mark "area",
+       :encoding #js {:x #js {:field "c-day"},
+                      :y #js {:field "value", :aggregate "sum"},
+                      :color #js {:field "trend", :scale #js {:scheme "category20b"}}}})
+
+(defn random-changes [n]
+  (for [i (range n)]
+    [{:c-day i :trend "pax" :value (rand-int 10)}
+     {:c-day i :trend "equipment" :value (rand-int 10)}]))
 
 (defn stringify [m]
   (cond
@@ -155,3 +173,28 @@
    [:div
     [vega-chart  k chart-spec]])
   ([] (chart-root "chart" area-spec)))
+
+
+;; var changeSet = vega
+;; .changeset()
+;; .insert(valueGenerator())
+;; .remove(function (t) {
+;;                       return t.x < minimumX;
+;;                       });
+;; view.change('table', changeSet).run();
+
+(defn ->changes [k rs tmax]
+  (-> (new js/vega.changeset)
+      (.insert rs)
+      (.remove (fn [t]
+                 (> (.-x t) tmax)))))
+
+;;(def changes (random-changes 10))
+;;(def sets (for [cs changes] (->changes "table" (clj->js cs) (-> cs :c-day))))
+;;(def vw (-> charts deref vals first .-view))
+(defn testplot []
+  (let [changes  (random-changes 10)
+        sets (for [cs changes] (->changes "table" (clj->js cs) (-> cs :c-day)))
+        vw (-> charts deref vals first .-view)]
+    (doseq [c sets]
+      (.run (.change vw "table" c)))))

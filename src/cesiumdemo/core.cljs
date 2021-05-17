@@ -94,8 +94,8 @@
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
       "random-moves"]]
     [legend]]
-   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :left "75%"}}
-    [v/vega-chart "flow-plot" v/area-spec]]])
+   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
+    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
 
 
 
@@ -306,6 +306,12 @@
   (let [l   (get-layers!)
         tgt (first (.getByName l id))]
     (.remove l tgt true)))
+
+(defn entities-in [layer]
+  (-> (get-layer! layer)
+      .-_entityCollection
+      .-values
+      ))
 
 (defn url->xyz [url]
   (js/Cesium.UrlTemplateImageryProvider. #js{:url url}))
