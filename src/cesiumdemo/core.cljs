@@ -68,21 +68,33 @@
    [:div.legend-scale
     [:ul.legend-labels
      [:li "PAX Movement"]
+     [:img {:src "icons/pax-move.png" :width "32" :height "32"}]
      [:li "Equipment Movement"]
+     [:img {:src "icons/eq-move.png" :width "32" :height "32"}]
      [:li "POE"]
+     [:img {:src "icons/poe.png" :width "32" :height "32"}]
+     [:li "APOE"]
+     [:img {:src "icons/apoe.png" :width "32" :height "32"}]
      [:li "Active Origin"]
-     [:li "Guard/Reserve Origin"]]]])
+     [:img {:src "icons/origin-ac.png" :width "32" :height "32"}]
+     [:li "Guard/Reserve Origin"]
+     [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
 
 (defn page [ratom]
   [:div
    [cesium-root]
+   [:div {:id "c-day" :class "header" :style {:position "absolute" :top "0px" :left "45%" :font-size "xx-large"}}
+    [:p {:style {:margin "0 auto"}}
+     "C-Day: " @c-day]]
    [:div.controlPanel
-    [:button.cesium-button {:id "clear-moves" :type "button" :on-click #(clear-moves!)}
-     "clear-moves"]
-    [:button.cesium-button {:id "random-moves" :type "button" :on-click #(random-moves!)}
-     "random-moves"]
-    [:div "C-Day: " @c-day]
-    [legend]]])
+    [:div
+     [:button.cesium-button {:style {:display "block"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+      "clear-moves"]
+     [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+      "random-moves"]]
+    [legend]]
+   [:div.header {:id "plot-right" :style {:position "absolute" :top "50%" :left "85%"}}
+    [:p "CHART GOES HERE!"]]])
 
 
 
@@ -209,27 +221,31 @@
 (defn movement->growing [mv start stop]
   (let [t1     (str (->jd start))
         t2     (str (->jd stop))
+        t2+    (str (->jd stop))
         t3     (str (->jd (add-days stop 365)))
         from   (str (gensym "from"))
         to     (str (gensym "target"))
-        avail  (str t1 "/" t3)
+        dynavail  (str t1 "/" t2)
+        staticavail (str t2+ "/" t3)
         {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
         source {:id from
                 :name from
-                :availability avail
+                :availability dynavail
                 :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}}
         target {:id   to
                 :name to
-                :availability avail
+                :availability dynavail
                 :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
                                                              (into [t2] (drop 3 cartographicDegrees))
                                                              (into [t3] (drop 3 cartographicDegrees))))
-                           :interpolationAlgorithm "LAGRANGE"}}]
+                           :interpolationAlgorithm "LAGRANGE"}}
+        id     (mv :id)]
     [source
      target
      (-> mv
       (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
-      (assoc :availability avail))]))
+      (assoc :availability dynavail :id (str id  "_dynamic")))
+     (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
 
 
 (defn random-movement []

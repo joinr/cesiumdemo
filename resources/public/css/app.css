@@ -13,6 +13,30 @@ html, body, #cesiumContainer {
     border-radius: 4px;
 }
 
+.header {
+    background: rgba(42, 42, 42, 0.8);
+    color: #edffff;
+    white-space: nowrap;
+    border-radius: 4px;
+}
+
+.controlPanelRight {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items:    center;
+    /*    width: 100%;
+     position: absolute;
+    top: 20px;
+    left: 400px;
+    left: 50%;*/
+    background: rgba(42, 42, 42, 0.8);
+    color: #edffff;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
 .my-legend .legend-title {
     text-align: left;
     margin-bottom: 5px;
