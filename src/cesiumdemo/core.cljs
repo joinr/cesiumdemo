@@ -5,7 +5,8 @@
    [cesiumdemo.cesium :as c]
    [cesiumdemo.data :as d]
    [cesiumdemo.network :as net]
-   [cljs-bean.core :refer [bean ->clj ->js]]))
+   [cljs-bean.core :refer [bean ->clj ->js]]
+   [cesiumdemo.vega :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
@@ -93,8 +94,8 @@
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
       "random-moves"]]
     [legend]]
-   [:div.header {:id "plot-right" :style {:position "absolute" :top "50%" :left "85%"}}
-    [:p "CHART GOES HERE!"]]])
+   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :left "75%"}}
+    [v/vega-chart "flow-plot" v/area-spec]]])
 
 
 

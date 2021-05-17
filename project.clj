@@ -1,7 +1,12 @@
 (defproject cesiumdemo "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [reagent "0.7.0"]
-                 [cljcolor "0.1.0-SNAPSHOT"]]
+                 [cljcolor "0.1.0-SNAPSHOT"]
+                 [cljsjs/vega "5.17.0-0"]
+                 [cljsjs/vega-lite "4.17.0-0"]
+                 [cljsjs/vega-embed "6.14.2-0"]
+                 [metosin/vega-tools "0.2.0"]
+                 [funcool/promesa "6.0.1"]]
   :profiles
   {:dev
    {:dependencies [[org.clojure/clojurescript "1.10.844"]
