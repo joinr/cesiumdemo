@@ -37,6 +37,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Page
 
+(def c-time (reagent/atom 0))
+(def c-init (reagent/atom (.-dayNumber (->jd +now+))))
+(def c-day  (reagent/atom 0))
+
+(defn current-day [curr]
+  (- (.-dayNumber curr) @c-init))
+
+(defn listen-to-time! []
+  (.addEventListener (.-onTick (ces/clock))
+                     (fn [e] (let [t  (.-currentTime  (ces/clock))
+                                   d-prev @c-day
+                                   d  (current-day t)]
+                               (when (not= d-prev d)
+                                 (reset! c-day d))))))
+
 (defn cesium-root []
   (let [_ (js/console.log "Starting the cesium-root")]
     (fn []
@@ -46,6 +61,18 @@
 (declare clear-moves!)
 (declare random-moves!)
 
+
+(defn legend []
+  [:div.my-legend {:style {:margin-top "10px"}}
+   [:div.legend-title "Legend"]
+   [:div.legend-scale
+    [:ul.legend-labels
+     [:li "PAX Movement"]
+     [:li "Equipment Movement"]
+     [:li "POE"]
+     [:li "Active Origin"]
+     [:li "Guard/Reserve Origin"]]]])
+
 (defn page [ratom]
   [:div
    [cesium-root]
@@ -53,7 +80,9 @@
     [:button.cesium-button {:id "clear-moves" :type "button" :on-click #(clear-moves!)}
      "clear-moves"]
     [:button.cesium-button {:id "random-moves" :type "button" :on-click #(random-moves!)}
-     "random-moves"]]])
+     "random-moves"]
+    [:div "C-Day: " @c-day]
+    [legend]]])
 
 
 
@@ -261,10 +290,6 @@
         tgt (first (.getByName l id))]
     (.remove l tgt true)))
 
-(def c-time (reagent/atom 0))
-
-;;(.addEventListener (.-onTick (ces/clock)) (fn [e] (let [t (.-currentTime  (ces/clock))] (reset! c-time t) )))
-
 (defn url->xyz [url]
   (js/Cesium.UrlTemplateImageryProvider. #js{:url url}))
 
@@ -288,7 +313,8 @@
   (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
   (dev-setup)
   (reload)
-  (layers!))
+  (layers!)
+  (listen-to-time!))
 
 (defn clear-moves! []
   (drop-layer! "moves"))
