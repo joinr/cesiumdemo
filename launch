@@ -1,0 +1,1 @@
+lein fig -- --build dev --repl

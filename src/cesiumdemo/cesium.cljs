@@ -225,7 +225,72 @@
     (->point lat lng)))
 
 
-(defn load-czml! [coll]
-  (let [p (js/Cesium.CzmlDataSource.load coll)]
-    (.add  (.-dataSources (@ces/view :current))
-           p)))
+(defn obj-lookup [obj k]
+  (if-not (keyword? k)
+    (aget obj k)
+    (aget obj (name k))))
+
+(defprotocol IEntities
+  (-entities [this]))
+
+(defprotocol IProperty
+  (-properties [e])
+  (-property   [e k]))
+
+;;protocol helpers...
+(extend-protocol clojure.core/ILookup
+  js/Cesium.EntityCollection
+  (-lookup
+    ([e k] (.getById e k))
+    ([e k nf] (or (.getById  e k) nf)))
+  js/Cesium.Entity
+  (-lookup
+    ([e k] (obj-lookup e k))
+    ([e k nf] (or (obj-lookup e k) nf)))
+  js/Cesium.DataSourceCollection
+  (-lookup
+    ([e k] (obj-lookup e k))
+    ([e k nf] (or (obj-lookup e k) nf)))
+  )
+
+(extend-protocol clojure.core/INamed
+  js/Cesium.Entity
+  (-name [e] (.-id e)))
+
+(extend-protocol clojure.core/ISeqable
+  js/Cesium.EntityCollection
+  (-seq [e]
+    (for [ent (.-values e)]
+      (clojure.core/MapEntry. (name ent) ent nil))))
+
+(deftype lazy-props [ent]
+  clojure.core/ILookup
+  (-lookup [this k]
+    (when-let [res (some-> (aget ent "properties") (obj-lookup k))]
+      (.-_value res)))
+  (-lookup [this k nf]
+    (if-let [res (some-> (aget ent "properties") (obj-lookup k))]
+      (.-_value res)
+      nf))
+  clojure.core/ISeqable
+  (-seq [this]
+    (let [props (aget ent "properties")]
+      (for [k (some-> props (aget "propertyNames"))]
+        (clojure.core/MapEntry. k (aget props k) nil))))
+  clojure.core/IFn
+  (-invoke [this k] (-lookup this k))
+  (-invoke [this k nf] (-lookup this k nf)))
+
+(extend-protocol clojure.core/IMeta
+  js/Cesium.Entity
+  (-meta [this]
+    (lazy-props. this)))
+
+;;doesn't work like I'd want it too...
+#_
+(extend-protocol IEntities
+  js/Cesium.Datasource
+  (-entities [this] (.-_entityCollection this))
+  js/Cesium.CzmlDataSource
+  (-entities [this] (.-_entityCollection this)))
+

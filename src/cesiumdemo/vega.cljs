@@ -5,7 +5,8 @@
              [vega-tools.validate :refer [check]]
              [promesa.core :as p]
              [reagent.core :as r]
-             [cljs-bean.core :refer [bean ->clj ->js]]))
+             [cljs-bean.core :refer [bean ->clj ->js]]
+             [clojure.core.async :as a]))
 
 
 (defn- wrap-chart-constructor
@@ -110,16 +111,51 @@
                          "scale" {"scheme" "category20b"}
                                           }}}))
 
+(def lightColor  "#fff")
+(def  medColor  "#888")
+
+(def dark-theme
+  {:config {:background "rgba(42, 42, 42, 0.6)" #_"#333",
+
+            :title {
+                    :color lightColor,
+                    :subtitleColor lightColor
+                    },
+            
+            :style {
+                    :guide-label {
+                                  :fill lightColor,
+                                  },
+                    :guide-title {
+                                  :fill lightColor,
+                                  },
+                    },
+            
+            :axis {:domainColor lightColor,
+                   :gridColor medColor,
+                   :tickColor lightColor}}})
+
 (def equipment-spec
-  #js {:width 300, :height 200,
-       :data 
-       #js {:name "table"
-            #_ #_:values #js [#js {:c-day 0, :quantity 0, :trend "pax"}
-                         #js {:c-day 0, :quantity 0, :trend "equipment"}]},
+  (-> {:width 300, :height 200,
+       :title "Total Equipment and Pax Moves By C-Day"
+;       :background "rgba(42, 42, 42, 0.8)"
+       :data
+        {:name "table"
+            #_ #_:values  [ {:c-day 0, :quantity 0, :trend "pax"}
+                          {:c-day 0, :quantity 0, :trend "equipment"}]},
        :mark "area",
-       :encoding #js {:x #js {:field "c-day"},
-                      :y #js {:field "value", :aggregate "sum"},
-                      :color #js {:field "trend", :scale #js {:scheme "category20b"}}}})
+       :encoding  {:x  {:field "c-day" :type "quantitative"},
+                      :y  {:field "value", :aggregate "sum"},
+                      :color  {:field "trend",
+                                  :type "nominal"
+                                  :scale  {;:scheme "category20b"
+                                              :domain ["equipment" "pax"]
+                                              :range  ["#ffa500"   "#ff0000"]}
+                                  :legend  {:direction "horizontal"
+                                               :orient "bottom"
+                                            :layout {:bottom {:anchor "middle"}}}}}}
+      (merge dark-theme)
+      clj->js))
 
 (defn random-changes [n]
   (for [i (range n)]
@@ -183,18 +219,42 @@
 ;;                       });
 ;; view.change('table', changeSet).run();
 
-(defn ->changes [k rs tmax]
+(defn ->changes
+  ([rs tmax]
+   (-> (new js/vega.changeset)
+       (.insert rs)
+       (.remove (fn [t]
+                  (> (.-x t) tmax)))))
+  ([rs]
+   (-> (new js/vega.changeset)
+       (.insert rs))))
+
+(defn ->rewind [fld tmax]
   (-> (new js/vega.changeset)
-      (.insert rs)
       (.remove (fn [t]
-                 (> (.-x t) tmax)))))
+                 (> (aget t fld) tmax)))))
 
 ;;(def changes (random-changes 10))
 ;;(def sets (for [cs changes] (->changes "table" (clj->js cs) (-> cs :c-day))))
 ;;(def vw (-> charts deref vals first .-view))
 (defn testplot []
   (let [changes  (random-changes 10)
-        sets (for [cs changes] (->changes "table" (clj->js cs) (-> cs :c-day)))
+        sets (for [cs changes] (->changes  (clj->js cs) (-> cs :c-day)))
         vw (-> charts deref vals first .-view)]
     (doseq [c sets]
       (.run (.change vw "table" c)))))
+
+(defn testrewind [tmax]
+  (let [vw (-> charts deref vals first .-view)]
+    (.run (.change vw "table" (->rewind "c-day" tmax)))))
+
+(defn push-samples! [plot-name xs]
+  (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))
+        cs (->changes xs)]
+    (.run (.change vw "table" cs))))
+
+(defn rewind-samples! [plot-name field bound]
+  (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))
+        cs (->rewind field bound)]
+    (.run (.change vw "table" cs))))
+

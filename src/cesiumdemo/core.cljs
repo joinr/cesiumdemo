@@ -108,6 +108,7 @@
     (println "dev mode")))
 
 (defn reload []
+  (swap! app-state dissoc :entities)
   (reagent/render [page app-state]
                   (.getElementById js/document "app")))
 
@@ -205,7 +206,8 @@
                                                                (stop  :long) (stop  :lat) 200])}
                 :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
                 :width 1
-                :clampToGround false}}))
+                :clampToGround false}
+     :properties {:move-type "equipment"}}))
 
 (defn pax-movement [from to start stop]
   ;;just draw a straight line between from and to for now.
@@ -217,7 +219,8 @@
                                                                (stop  :long) (stop  :lat) 200])}
                 :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
                 :width 1
-                :clampToGround false}}))
+                :clampToGround false}
+     :properties {:move-type "pax"}}))
 
 (defn movement->growing [mv start stop]
   (let [t1     (str (->jd start))
@@ -232,14 +235,16 @@
         source {:id from
                 :name from
                 :availability dynavail
-                :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}}
+                :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}
+                :properties {:move-type "source"}}
         target {:id   to
                 :name to
                 :availability dynavail
                 :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
                                                              (into [t2] (drop 3 cartographicDegrees))
                                                              (into [t3] (drop 3 cartographicDegrees))))
-                           :interpolationAlgorithm "LAGRANGE"}}
+                           :interpolationAlgorithm "LAGRANGE"}
+                :properties {:move-type "target"}}
         id     (mv :id)]
     [source
      target
@@ -332,16 +337,53 @@
         _        (.remove layers base)]
     (.addImageryProvider layers provider)))
 
+(defn registered-moves []
+  (let [keyf (memoize (fn [e] (-> e meta (get "move-type"))))]
+    (->> (get-layer! "moves")
+         .-_entityCollection
+         vals
+         (group-by keyf))))
+
+(defn present [t ents]
+  (let [t (->jd t)]
+    (filter (fn [e] (.isAvailable e t)) ents)))
+
+;;naive stats.
+(defn present-on-day [d ents]
+  (present (add-days +now+ d) ents ))
+
+(defn daily-stats [t]
+  (let [{:strs [pax equipment]}  (get @app-state :entities)]
+    #js[#js{:c-day t :trend "equipment" :value (count (present-on-day t equipment))}
+        #js{:c-day t :trend "pax"       :value (count (present-on-day t pax))}]))
+
+
+;;when we build a schedule, we want to capture the movement entities in the app state.
+;;This speeds up querying.  Alterantely, we could just pre-compute all the availability
+;;information too...
+
+(defn derive-movement-stats! []
+  (swap! app-state assoc :entities (registered-moves)))
+
 (defn ^:export main []
   (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
   (dev-setup)
   (reload)
   (layers!)
-  (listen-to-time!))
+  (listen-to-time!)
+  (add-watch c-day :plotting
+             (fn [k r oldt newt]
+               (if (< newt oldt)
+                 (v/rewind-samples! :flow-plot-view "c-day" newt)
+                 (v/push-samples! :flow-plot-view (daily-stats newt))))))
 
 (defn clear-moves! []
-  (drop-layer! "moves"))
+  (drop-layer! "moves")
+  (swap! app-state dissoc :entities)
+  (v/rewind-samples! :flow-plot-view "c-day" 0))
+
 (defn random-moves! []
-  (timed-random-moves!))
+  (timed-random-moves!)
+  (derive-movement-stats!))
 
 

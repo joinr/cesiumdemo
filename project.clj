@@ -6,7 +6,8 @@
                  [cljsjs/vega-lite "4.17.0-0"]
                  [cljsjs/vega-embed "6.14.2-0"]
                  [metosin/vega-tools "0.2.0"]
-                 [funcool/promesa "6.0.1"]]
+                 [funcool/promesa "6.0.1"]
+                 [org.clojure/core.async "1.3.618"]]
   :profiles
   {:dev
    {:dependencies [[org.clojure/clojurescript "1.10.844"]
