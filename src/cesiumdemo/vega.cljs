@@ -98,8 +98,13 @@
 
 (defn ->stacked-area-spec [x y trend & {:keys [init-data x-label y-label trend-label]}]
   (clj->js
-   {;"$schema" "https://vega.github.io/schema/vega-lite/v5.json",
-    "width" 300, "height" 200,
+   {;"$schema" "https://vega.github.io/schema/vega-lite/v5.json","
+    "autosize" {
+                "type" "pad",
+                "resize" true
+                 "contains" "padding"
+                 }
+    "width" #_"container" 300, "height" #_"container" 200,
     "data"  {"name"   "table"
              ;"values" init-data
              },
@@ -137,6 +142,11 @@
 
 (def equipment-spec
   (-> {:width 300, :height 200,
+       "autosize" {
+                   "type" "pad",
+                   "resize" true ;;maybe revisit this.
+                   "contains" "padding"
+                   }
        :title "Total Equipment and Pax Moves By C-Day"
 ;       :background "rgba(42, 42, 42, 0.8)"
        :data

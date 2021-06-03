@@ -14,6 +14,13 @@
 (defonce app-state
   (reagent/atom {}))
 
+;;Date/Time Junk
+;;We have to convert between js/Date and cesium's julian
+;;date quite a bit.  For the moment, we do stuff fairly manually.
+;;We have the current time the app was launched and then
+;;provide some convenience functions around it for adding days,
+;;converting to julian, etc.
+
 (def +now+ (new js/Date))
 
 (defn add-days [from n]
@@ -31,12 +38,10 @@
 
 (def +jnow+ (->jd +now+))
 
-(defn ->button [id on-click label]
-  [:button.cesium-button {:id id :on-click on-click}
-   label])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Page
+;;state for the current time in days relative to now.
+;;We may move this into the app-state or into reframe
+;;with some views later. for now we just use global state
+;;in ratoms.
 
 (def c-time (reagent/atom 0))
 (def c-init (reagent/atom (.-dayNumber (->jd +now+))))
@@ -45,6 +50,10 @@
 (defn current-day [curr]
   (- (.-dayNumber curr) @c-init))
 
+;;hook up our event listener to the current view's clock.
+;;an option here could be to just store the event listener in
+;;an atom and swap it out during reload.  This setup might
+;;have multiple listeners during dev.
 (defn listen-to-time! []
   (.addEventListener (.-onTick (ces/clock))
                      (fn [e] (let [t  (.-currentTime  (ces/clock))
@@ -53,66 +62,10 @@
                                (when (not= d-prev d)
                                  (reset! c-day d))))))
 
-(defn cesium-root []
-  (let [_ (js/console.log "Starting the cesium-root")]
-    (fn []
-      [:div.cesiumContainer {:class "fullSize"}
-       [ces/cesium-viewer {:name "cesium" :opts {:skyBox false}}]])))
-
-(declare clear-moves!)
-(declare random-moves!)
-
-
-(defn legend []
-  [:div.my-legend {:style {:margin-top "10px"}}
-   [:div.legend-title "Legend"]
-   [:div.legend-scale
-    [:ul.legend-labels
-     [:li "PAX Movement"]
-     [:img {:src "icons/pax-move.png" :width "32" :height "32"}]
-     [:li "Equipment Movement"]
-     [:img {:src "icons/eq-move.png" :width "32" :height "32"}]
-     [:li "POE"]
-     [:img {:src "icons/poe.png" :width "32" :height "32"}]
-     [:li "APOE"]
-     [:img {:src "icons/apoe.png" :width "32" :height "32"}]
-     [:li "Active Origin"]
-     [:img {:src "icons/origin-ac.png" :width "32" :height "32"}]
-     [:li "Guard/Reserve Origin"]
-     [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
-
-(defn page [ratom]
-  [:div
-   [cesium-root]
-   [:div {:id "c-day" :class "header" :style {:position "absolute" :top "0px" :left "45%" :font-size "xx-large"}}
-    [:p {:style {:margin "0 auto"}}
-     "C-Day: " @c-day]]
-   [:div.controlPanel
-    [:div
-     [:button.cesium-button {:style {:display "block"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
-      "clear-moves"]
-     [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
-      "random-moves"]]
-    [legend]]
-   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
-    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Initialize App
-
-(defn dev-setup []
-  (when ^boolean js/goog.DEBUG
-    (enable-console-print!)
-    (println "dev mode")))
-
-(defn reload []
-  (swap! app-state dissoc :entities)
-  (reagent/render [page app-state]
-                  (.getElementById js/document "app")))
-
-
+;;coerces a map of maps into czml js objects in the packet format
+;;cesium expects.  The packet name will determine, per cesium, which
+;;entity collection recieves the updates / changes defined by the entity
+;;packets.
 (defn ->czml-packets
   ([packet-name xs]
    (clj->js
@@ -122,6 +75,7 @@
             xs)))
   ([xs] (->czml-packets (gensym "packet") xs)))
 
+#_ 
 (def czml
   (clj->js ;;have to recursively do this...
    [{:id "document"
@@ -328,7 +282,7 @@
   (url->xyz url))
 
 (def local-layers
-  {:blue          (xyz-provider "layers/bm5/{z}/{x}/{y}.png")
+  {:blue-marble   (xyz-provider "layers/bm5/{z}/{x}/{y}.png")
    :virtual-earth (xyz-provider "layers/bingve/{z}/{x}/{y}.png")})
 
 (defn set-imagery [provider]
@@ -365,17 +319,6 @@
 (defn derive-movement-stats! []
   (swap! app-state assoc :entities (registered-moves)))
 
-(defn ^:export main []
-  (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
-  (dev-setup)
-  (reload)
-  (layers!)
-  (listen-to-time!)
-  (add-watch c-day :plotting
-             (fn [k r oldt newt]
-               (if (< newt oldt)
-                 (v/rewind-samples! :flow-plot-view "c-day" newt)
-                 (v/push-samples! :flow-plot-view (daily-stats newt))))))
 
 (defn clear-moves! []
   (drop-layer! "moves")
@@ -387,3 +330,86 @@
   (derive-movement-stats!))
 
 
+;;UI / Page
+;;=========
+
+(def viewer-options
+  {:skyBox false
+   :baseLayerPicker false
+   :imageryProvider (-> local-layers :blue-marble)
+   :geocoder false})
+
+(defn cesium-root []
+  (let [_ (js/console.log "Starting the cesium-root")]
+    (fn []
+      [:div.cesiumContainer {:class "fullSize"}
+       [ces/cesium-viewer {:name "cesium" :opts viewer-options}]])))
+
+(defn legend []
+  [:div.my-legend {:style {:margin-top "10px"}}
+   [:div.legend-title "Legend"]
+   [:div.legend-scale
+    [:ul.legend-labels
+     [:li "PAX Movement"]
+     [:img {:src "icons/pax-move.png" :width "32" :height "32"}]
+     [:li "Equipment Movement"]
+     [:img {:src "icons/eq-move.png" :width "32" :height "32"}]
+     [:li "POE"]
+     [:img {:src "icons/poe.png" :width "32" :height "32"}]
+     [:li "APOE"]
+     [:img {:src "icons/apoe.png" :width "32" :height "32"}]
+     [:li "Active Origin"]
+     [:img {:src "icons/origin-ac.png" :width "32" :height "32"}]
+     [:li "Guard/Reserve Origin"]
+     [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
+
+#_
+(defn ->button [id on-click label]
+  [:button.cesium-button {:id id :on-click on-click}
+   label])
+
+(defn page [ratom]
+  [:div
+   [cesium-root]
+   [:div {:id "c-day" :class "header" :style {:position "absolute" :top "0px" :left "45%" :font-size "xx-large"}}
+    [:p {:style {:margin "0 auto"}}
+     "C-Day: " @c-day]]
+   [:div.controlPanel
+    [:div
+     [:button.cesium-button {:style {:display "block"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+      "clear-moves"]
+     [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+      "random-moves"]]
+    [legend]]
+   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
+    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Initialize App
+
+(defn dev-setup []
+  (when ^boolean js/goog.DEBUG
+    (enable-console-print!)
+    (println "dev mode")))
+
+(defn reload []
+  (swap! app-state dissoc :entities)
+  (reagent/render [page app-state]
+                  (.getElementById js/document "app")))
+
+;;Main
+;;====
+
+(defn ^:export main []
+  (ces/set-extents! -125.147327626 24.6163352675 -66.612171376 49.6742238918)
+  (dev-setup)
+  (reload)
+  (layers!)
+  (listen-to-time!)
+  (add-watch c-day :plotting
+             (fn [k r oldt newt]
+               (if (< newt oldt)
+                 (v/rewind-samples! :flow-plot-view "c-day" newt)
+                 (v/push-samples! :flow-plot-view (daily-stats newt))))))
