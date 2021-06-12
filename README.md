@@ -1,6 +1,7 @@
 # cesiumdemo
 
-A [reagent](https://github.com/reagent-project/reagent) application designed to ... well, that part is up to you.
+An exploration of the cesiumjs api from clojurescript.  Working prototype visualizing
+entities moving around, doing some realtime plotting with vega as well.
 
 ## Development Mode
 
@@ -8,12 +9,12 @@ A [reagent](https://github.com/reagent-project/reagent) application designed to 
 
 ```
 lein clean
-lein figwheel dev
+lein fig -- --build dev --repl
 ```
 
 Figwheel will automatically push cljs changes to the browser.
 
-Wait a bit, then browse to [http://localhost:3449](http://localhost:3449).
+Wait a bit, then browse to [http://localhost:9500](http://localhost:9500).
 
 ## Production Build
 

@@ -8,6 +8,8 @@
    [cljs-bean.core :refer [bean ->clj ->js]]
    [cesiumdemo.vega :as v]))
 
+(set! *warn-on-infer* true)
+ 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
@@ -21,19 +23,19 @@
 ;;provide some convenience functions around it for adding days,
 ;;converting to julian, etc.
 
-(def +now+ (new js/Date))
+(def +now+ (new js/Date)) 
 
 (defn add-days [from n]
   (let [res (new js/Date from)
         _  (.setDate res (+ (.getDate res ) n))]
     res))
 
-(defn add-jdays [from n]
+(defn add-jdays [^js/Cesium.JulianDate  from n]
   (let [res (.clone from)
         _   (js/Cesium.JulianDate.addDays res n res)]
     res))
 
-(defn ->jd [d]
+(defn ^js/Cesium.JulianDate ->jd [d]
   (js/Cesium.JulianDate.fromDate d))
 
 (def +jnow+ (->jd +now+))
@@ -47,7 +49,7 @@
 (def c-init (reagent/atom (.-dayNumber (->jd +now+))))
 (def c-day  (reagent/atom 0))
 
-(defn current-day [curr]
+(defn current-day [^js/Cesium.JulianDate curr]
   (- (.-dayNumber curr) @c-init))
 
 ;;hook up our event listener to the current view's clock.
@@ -249,16 +251,19 @@
 (defn tada!       [] (do (layers!) (moves!)))
 (defn tada-timed! [] (do (layers!) (timed-random-moves!)))
 
-(defn get-layers! []
-  (-> @ces/view :current .-dataSources))
+(defn ^js/Cesium.DataSourceCollection
+  get-layers! []
+  (-> (ces/current-view) .-dataSources))
 
 (defn imagery-layers []
-  (-> @ces/view :current .-imageryLayers))
+  (-> (ces/current-view) .-imageryLayers))
 
 (defn layer-names []
-  (for [v (-> @ces/view :current .-dataSources .-_dataSources)] (.-name v)))
+  (for [^js/Cesium.DataSource v (-> (ces/current-view) .-dataSources .-_dataSources)]
+    (.-name v))) 
 
-(defn get-layer! [id]
+(defn ^js/Cesium.EntityCollection
+  get-layer! [id]
   (-> (get-layers!) (.getByName id) first))
 
 (defn drop-layer! [id]
@@ -300,7 +305,7 @@
 
 (defn present [t ents]
   (let [t (->jd t)]
-    (filter (fn [e] (.isAvailable e t)) ents)))
+    (filter (fn [^js/Cesium.Entity e] (.isAvailable e t)) ents)))
 
 ;;naive stats.
 (defn present-on-day [d ents]

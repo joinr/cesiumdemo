@@ -10,6 +10,8 @@
 (defonce view
   (r/atom {}))
 
+(defn ^js/Cesium.Viewer current-view []
+  (some-> view deref :current))
 
 (defn set-extents! [x1 y1 x2 y2]
   (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
@@ -21,7 +23,7 @@
 (defn ->viewer [el {:keys [] :as opts}]
   (js/Cesium.Viewer. el (clj->js opts)))
 
-(defn clock [] (-> view deref :current .-clock))
+(defn ^js/Cesium.Clock clock [] (-> view deref :current .-clock))
 
 ;;basic reagent component.
 (defn cesium-viewer [{:keys [name opts]}]
