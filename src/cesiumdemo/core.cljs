@@ -4,11 +4,12 @@
    [cesiumdemo.widget :as ces]
    [cesiumdemo.cesium :as c]
    [cesiumdemo.data :as d]
+   [cesiumdemo.entityatlas :as ent]
    [cesiumdemo.network :as net]
    [cljs-bean.core :refer [bean ->clj ->js]]
    [cesiumdemo.vega :as v]))
 
-(set! *warn-on-infer* true)
+#_(set! *warn-on-infer* true)
  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars

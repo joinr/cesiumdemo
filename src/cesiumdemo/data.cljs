@@ -1,4 +1,9 @@
-(ns cesiumdemo.data)
+(ns cesiumdemo.data
+  (:require [cesiumdemo.locations :as locs]
+            [cesiumdemo.units :as u]))
+
+(def units u/units)
+(def locations locs/locations)
 
 (defn dist [l r]
   (let [dy (- (r :lat) (l :lat))
