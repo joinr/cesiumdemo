@@ -5,6 +5,10 @@
   #?(:clj  (Integer/parseInt s)
      :cljs (js/parseInt s)))
 
+(defn str->double [s]
+  #?(:clj  (Double/parseDouble s)
+     :cljs (js/parseFloat s)))
+
 (defn parse-day [s]
   (let [c    (first s)
         root (str->int (subs s 1))]

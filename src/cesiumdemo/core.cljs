@@ -6,6 +6,7 @@
    [cesiumdemo.data :as d]
    [cesiumdemo.entityatlas :as ent]
    [cesiumdemo.network :as net]
+   [cesiumdemo.entityatlas :as ea]
    [cljs-bean.core :refer [bean ->clj ->js]]
    [cesiumdemo.vega :as v]))
 
@@ -155,7 +156,7 @@
   (- n (* (rand) 0.25)))
 
 (defn equipment-movement [from to start stop]
-  (let [arc (str from "->" to "-eq" )]
+  (let [arc (str from "->" to "-eq" (rand))]
     ;;just draw a straight line between from and to for now.
     {:id   arc
      :name arc
@@ -168,7 +169,7 @@
 
 (defn pax-movement [from to start stop]
   ;;just draw a straight line between from and to for now.
-  (let [arc (str from "->" to "-pax" )]
+  (let [arc (str from "->" to "-pax" (rand))]
     ;;just draw a straight line between from and to for now.
     {:id   arc
      :name arc
@@ -208,6 +209,14 @@
      (-> mv
       (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
       (assoc :availability dynavail :id (str id  "_dynamic")))
+     (let [id (str "randmove" (rand))]
+       {:id   id
+        :name id
+        :billboard {:image
+                    (->> (rand-nth ea/unit-imagery) :Patch (str "/icons/patches/"))
+                    :scale 0.35}
+        :position {:reference (str to "#position")}
+        :availability dynavail})
      (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
 
 
@@ -244,10 +253,10 @@
       (ports!)))
 
 (defn moves! []
-  (ces/load-czml! (random-movements 3000)))
+  (ces/load-czml! (random-movements 500)))
 
 (defn timed-random-moves! []
-  (ces/load-czml! (random-movements +now+ 3000)))
+  (ces/load-czml! (random-movements +now+ 500)))
 
 (defn tada!       [] (do (layers!) (moves!)))
 (defn tada-timed! [] (do (layers!) (timed-random-moves!)))

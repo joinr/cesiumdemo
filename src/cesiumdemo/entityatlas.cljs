@@ -21,3 +21,9 @@
 
 (defn unit->location [id]
   (some-> id find-unit :LOCATION origin->location))
+
+(defn ensure-jpg [s]
+  (clojure.string/replace s  #"png|svg|gif$" "jpg"))
+
+(def unit-imagery  (for [{:keys [UIC Patch Icon]} (vals d/units)]
+                    {:UIC UIC :Patch (ensure-jpg Patch) :Icon Icon}))
