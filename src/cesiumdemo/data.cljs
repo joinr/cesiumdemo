@@ -2,7 +2,9 @@
   (:require [cesiumdemo.locations :as locs]
             [cesiumdemo.units :as u]))
 
-(def units u/units)
+(def units (into {} (for [r u/units]
+                      [(r :UIC) r])))
+
 (def locations locs/locations)
 
 (defn dist [l r]

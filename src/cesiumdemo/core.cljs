@@ -213,7 +213,7 @@
        {:id   id
         :name id
         :billboard {:image
-                    (->> (rand-nth ea/unit-imagery) :Patch (str "/icons/patches/"))
+                    (->> (rand-nth ea/known-imagery) :Patch (str "/icons/patches/"))
                     :scale 0.35}
         :position {:reference (str to "#position")}
         :availability dynavail})
