@@ -71,9 +71,12 @@
        (mapcat (juxt :tstart :RDD :CRD))
        bounds))
 
+(defn ensure-jpg [s]
+  (clojure.string/replace s  #"png|svg|gif$" "jpg"))
+
 (def patch-path
   (memoize (fn [p]
-             (str "/icons/patches/" p))))
+             (ensure-jpg (str "/icons/patches/" p)))))
 
 (def icon-path
   (memoize (fn [p]
