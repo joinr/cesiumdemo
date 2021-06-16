@@ -1,5 +1,6 @@
 ;;Provides a wrapper around cesium's
 ;;baked in colors.
+(comment 
 (ns cesiumdemo.colors
   (:require [cljcolor.core :as color]))
 
@@ -204,3 +205,4 @@
   (-as-color [c]
     (Cesium.Color.fromCssColorString c)))
 
+)
