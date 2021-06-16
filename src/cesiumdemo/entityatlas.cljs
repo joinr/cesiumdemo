@@ -4,7 +4,8 @@
 ;;work off on indexdb or localstorage.  Might also provide
 ;;an API for adding new units to the atlas....
 (ns cesiumdemo.entityatlas
-  (:require [cesiumdemo.data :as d]))
+  (:require [cesiumdemo.data :as d]
+            [clojure.string]))
 
 (def origins
   (into {} (for [{:keys [origin code]} (vals d/locations)]
