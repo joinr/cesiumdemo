@@ -24,7 +24,7 @@
 
 
 (defn ensure-jpg [s]
-  (clojure.string/replace s  #"png|svg|gif$" "jpg"))
+  (clojure.string/replace s  #"png$|svg$|gif$" "jpg"))
 
 (def patch-path
   (memoize (fn [p]
