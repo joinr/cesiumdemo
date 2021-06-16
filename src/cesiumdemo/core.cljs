@@ -155,6 +155,9 @@
 (defn jitter- [n]
   (- n (* (rand) 0.25)))
 
+;;Optimization:  Look at changing the polyline's ArcType to none,
+;;possible much simpler line rendering, although it won't clamp to the
+;;geodesic surface.
 (defn equipment-movement [from to start stop]
   (let [arc (str from "->" to "-eq" (rand))]
     ;;just draw a straight line between from and to for now.
@@ -180,6 +183,7 @@
                 :clampToGround false}
      :properties {:move-type "pax"}}))
 
+
 (defn movement->growing [mv start stop]
   (let [t1     (str (->jd start))
         t2     (str (->jd stop))
@@ -203,21 +207,95 @@
                                                              (into [t3] (drop 3 cartographicDegrees))))
                            :interpolationAlgorithm "LAGRANGE"}
                 :properties {:move-type "target"}}
-        id     (mv :id)]
+        id     (mv :id)
+        bbid (str "randmove" (rand))
+        {:keys [Patch Icon]} (rand-nth ea/known-imagery)]
     [source
      target
      (-> mv
       (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
       (assoc :availability dynavail :id (str id  "_dynamic")))
-     (let [id (str "randmove" (rand))]
-       {:id   id
-        :name id
-        :billboard {:image
-                    (->> (rand-nth ea/known-imagery) :Patch (str "/icons/patches/"))
-                    :scale 0.35}
-        :position {:reference (str to "#position")}
-        :availability dynavail})
+     ;;entity icons that follow the to of the move....
+     {:id   bbid
+      :name bbid
+      :billboard {:image (ea/patch-path Patch)
+                  :scale 0.35
+                  :pixelOffset {:cartesian2 [0 0]}
+                  :eyeOffset   {:cartesian [0 0 -500000]}}
+      :position {:reference (str to "#position")}
+      :availability dynavail
+      :properties {:billboard-type "patch"}}
+     {:id   (str bbid "src")
+      :name (str bbid "src")
+      :billboard {:image (ea/icon-path Icon)
+                  :scale 1.0
+                  :pixelOffset {:cartesian2 [63 0]}
+                  :eyeOffset   {:cartesian [0 0 -500000]}}
+      :position {:reference (str to "#position")}
+      :properties {:billboard-type "icon"}
+      :availability dynavail}
      (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
+
+
+(def +day-seconds+  86400)
+(def +hour-seconds+ 3600)
+(def ger [49.27	73.3])
+
+(defn ->path [id availability moves-t-long-lat-height
+              & {:keys [material width leadTime trailTime resolution epoch]
+                 :or {material {:polylineOutline {:color {:rgba [255, 0, 255, 255]},
+                                                  :outlineColor {:rgba [0, 255, 255, 255]}
+                                                  :outlineWidth 5}}
+                      width 8
+                      resolution +day-seconds+}}]
+  {:id id
+   :name (str "path" id)
+   :description "a random path!"
+   :availability availability,
+   :path {:material material
+          :width    width,
+          :leadTime leadTime
+          :trailTime trailTime
+          :resolution resolution}
+   :billboard {:image "/icons/div.png"
+               :scale 0.1,
+               :eyeOffset {:cartesian [0.0, 0.0, -50000.0]}}
+   :position {:epoch  epoch ;;maybe
+              :cartographicDegrees moves-t-long-lat-height
+              :interpolationAlgorithm "LAGRANGE"}})
+
+(defn midpoint [[t0 x0 y0 z0] [t1 x1 y1 z1]]
+  [(+ t0 (/ (- t1 t0) 2.0))
+   (+ x0 (/ (- x1 x0) 2.0))
+   (+ y0 (/ (- y1 y0) 2.0))
+   (+ z0 (/ (- z1 z0) 2.0))])
+
+(defn lerpn [n xs]
+  (if (zero? n)
+    xs
+    (recur (dec n)
+           (apply concat
+                  (for [[l r] (partition 2 1 xs)]
+                    [l (midpoint l r) r])))))
+
+(defn demo-path []
+  (let [scale #(* % +day-seconds+)
+        day-samples [0  -78.59   35.08   10000
+                     10 -79.0052 35.1015 5000
+                     22 13.4605  51.0804 0]
+        scaled-samples (->> (for [[t y x z] (->> (partition 4 day-samples)
+                                                 (lerpn 3))]
+                              [(scale t) y x z])
+                            (apply concat)
+                            vec)
+        tstart (->jd +now+)
+        tstop  (add-jdays (->jd +now+) 22)
+        avail  (str tstart "/" tstop)]
+    (->path "demo-path"
+            avail
+            scaled-samples
+            :epoch (str (->jd +now+))
+            :leadTime 0)))
 
 
 (defn random-movement []
@@ -353,6 +431,10 @@
    :baseLayerPicker false
    :imageryProvider (-> local-layers :blue-marble)
    :geocoder false})
+
+;;todo : figure out way to allow online toggle.
+(def online-options
+  {:skyBox false})
 
 (defn cesium-root []
   (let [_ (js/console.log "Starting the cesium-root")]

@@ -71,22 +71,11 @@
        (mapcat (juxt :tstart :RDD :CRD))
        bounds))
 
-(defn ensure-jpg [s]
-  (clojure.string/replace s  #"png|svg|gif$" "jpg"))
-
-(def patch-path
-  (memoize (fn [p]
-             (ensure-jpg (str "/icons/patches/" p)))))
-
-(def icon-path
-  (memoize (fn [p]
-             (str "/icons/std/" p))))
-
 (defn add-info [{:keys [UIC PATCH ICON] :as e}]
   (if (and PATCH ICON)
       e
       (if-let [u (ea/find-unit UIC)]
-        (assoc e :PATCH (or PATCH (u :Patch))
+        (assoc e :PATCH  (or PATCH (u :Patch))
                  :ICON   (or ICON (u :Icon)))
         (assoc e :PATCH "USARMY.jpg"
                e :ICON  "unknown.gif"))))
