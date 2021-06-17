@@ -8,7 +8,8 @@
    [cesiumdemo.network :as net]
    [cesiumdemo.entityatlas :as ea]
    [cljs-bean.core :refer [bean ->clj ->js]]
-   [cesiumdemo.vega :as v]))
+   [cesiumdemo.vega :as v]
+   [cesiumdemo.util :as util]))
 
 #_(set! *warn-on-infer* true)
  
@@ -79,21 +80,6 @@
             xs)))
   ([xs] (->czml-packets (gensym "packet") xs)))
 
-#_ 
-(def czml
-  (clj->js ;;have to recursively do this...
-   [{:id "document"
-     :name "CZML Point"
-     :version "1.0"}
-    {:id "point 1"
-     :name "point"
-     :position {:cartographicDegrees [-76.21848087 39.38973326  0]} ; #_ [39.38973326 -76.21848087 0]
-     :point {:color {:rgba [255 255 255 255]}
-             :outlineColor {:rgba [255 0 0 255]}
-             :outlineWidth 4
-             :pixelSize 20}
-     }]))
-
 (def compos #{"Army Active" "Army Guard" "Army Reserve"})
 (def countries #{"United States"})
 
@@ -149,11 +135,7 @@
           (let [dest {:lat (to :lat) :long (to :long)}]
             [[k (to :long-name)] {:start from :stop dest :distance (d/dist from to)}]))))
 
-(defn jitter+ [n]
-  (+ n (* (rand) 0.25)))
 
-(defn jitter- [n]
-  (- n (* (rand) 0.25)))
 
 ;;Optimization:  Look at changing the polyline's ArcType to none,
 ;;possible much simpler line rendering, although it won't clamp to the
@@ -163,7 +145,7 @@
     ;;just draw a straight line between from and to for now.
     {:id   arc
      :name arc
-     :polyline {:positions {:cartographicDegrees (mapv jitter+ [(start :long) (start :lat) 200
+     :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
                 :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
                 :width 1
@@ -176,7 +158,7 @@
     ;;just draw a straight line between from and to for now.
     {:id   arc
      :name arc
-     :polyline {:positions {:cartographicDegrees (mapv jitter- [(start :long) (start :lat) 100000
+     :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
                                                                (stop  :long) (stop  :lat) 200])}
                 :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
                 :width 1
@@ -248,6 +230,10 @@
                                                   :outlineWidth 5}}
                       width 8
                       resolution +day-seconds+}}]
+  (let [pos (if (map? moves-t-long-lat-height)
+              (util/assoc-some moves-t-long-lat-height :epoch epoch)
+              (util/->sampled-degrees moves-t-long-lat-height
+                  :scale resolution :epoch epoch :lerp-level 4))]
   {:id id
    :name (str "path" id)
    :description "a random path!"
@@ -260,23 +246,8 @@
    :billboard {:image "/icons/div.png"
                :scale 0.1,
                :eyeOffset {:cartesian [0.0, 0.0, -50000.0]}}
-   :position {:epoch  epoch ;;maybe
-              :cartographicDegrees moves-t-long-lat-height
-              :interpolationAlgorithm "LAGRANGE"}})
+   :position pos #_(util/interpolate pos :interp-algorithm "LAGRANGE" :interp-degree 5)}))
 
-(defn midpoint [[t0 x0 y0 z0] [t1 x1 y1 z1]]
-  [(+ t0 (/ (- t1 t0) 2.0))
-   (+ x0 (/ (- x1 x0) 2.0))
-   (+ y0 (/ (- y1 y0) 2.0))
-   (+ z0 (/ (- z1 z0) 2.0))])
-
-(defn lerpn [n xs]
-  (if (zero? n)
-    xs
-    (recur (dec n)
-           (apply concat
-                  (for [[l r] (partition 2 1 xs)]
-                    [l (midpoint l r) r])))))
 
 (defn demo-path []
   (let [scale #(* % +day-seconds+)
@@ -284,7 +255,7 @@
                      10 -79.0052 35.1015 5000
                      22 13.4605  51.0804 0]
         scaled-samples (->> (for [[t y x z] (->> (partition 4 day-samples)
-                                                 (lerpn 3))]
+                                                 (util/lerpn 3))]
                               [(scale t) y x z])
                             (apply concat)
                             vec)
@@ -297,6 +268,47 @@
             :epoch (str (->jd +now+))
             :leadTime 0)))
 
+(defn bouncy-path [floor ceiling xs]
+  (let [[start middle stop] (util/ensure-partitions 4 xs)
+        [ts xs ys zs] start
+        [tf xf yf zf] stop
+        [t x y z]     (util/midpoint middle stop)
+        [tt xx yy zz] (util/midpoint start middle)]
+    [[ts xs ys ceiling] [tt xx yy floor] middle [t x y zf] [tf xf yf floor]]))
+
+(defn jitter-xyz
+  ([scale xs]
+   (let [[sx sy sz] scale]
+     (->> xs
+          (util/ensure-partitions 4)
+          (map (fn [[t x y z]]
+                 [t (+ x (*  (rand)))
+                   (+ y (* sy (rand)))
+                   (+ z (* sz (rand)))])))))
+  ([xs] (jitter-xyz [1 1 1] xs)))
+
+(defn geo-jitter [xs]
+  (jitter-xyz [0.25 0.25 0] xs))
+
+(defn demo-path2 []
+  (let [samples (geo-jitter [0  -78.59   35.08   30000
+                             3  -79.0052 35.1015 30000
+                             22 13.4605  51.0804 1000])
+        tstart (->jd +now+)
+        tstop  (add-jdays (->jd +now+) 22)
+        avail  (str tstart "/" tstop)]
+    (-> (->path "demo-path"
+                avail
+                samples
+                :epoch (str (->jd +now+))
+                :leadTime 0
+                :resolution +day-seconds+
+                :material {:polylineOutline {:color        {:rgba [255 0 0 175]},
+                                             :width        10
+                                        ;:outlineColor {:rgba [0, 255, 255, 255]}
+                                        ;:outlineWidth 5
+                                             }})
+        (update :position util/interpolate :interp-degree 2 ))))
 
 (defn random-movement []
   (let [edge (rand-nth (keys connections))
