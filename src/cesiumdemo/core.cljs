@@ -10,7 +10,8 @@
    [cljs-bean.core :refer [bean ->clj ->js]]
    [cesiumdemo.vega :as v]
    [cesiumdemo.time :as time :refer [->jd add-days iso-str interval]]
-   [cesiumdemo.util :as util]))
+   [cesiumdemo.util :as util]
+   [cesiumdemo.czml :as czml]))
 
 #_(set! *warn-on-infer* true)
 
@@ -71,14 +72,14 @@
 ;;coerces a map of maps into czml js objects in the packet format
 ;;cesium expects.  The packet name will determine, per cesium, which
 ;;entity collection recieves the updates / changes defined by the entity
-;;packets.
+;;packets.  nils are skipped.
 (defn ->czml-packets
   ([packet-name xs]
    (clj->js
     (concat [{:id "document"
               :name packet-name
               :version "1.0"}]
-            xs)))
+            (filter identity xs))))
   ([xs] (->czml-packets (gensym "packet") xs)))
 
 (def compos #{"Army Active" "Army Guard" "Army Reserve"})
@@ -153,19 +154,88 @@
                 :clampToGround false}
      :properties {:move-type "equipment"}}))
 
-(defn pax-movement [from to start stop]
-  ;;just draw a straight line between from and to for now.
-  (let [arc (str from "->" to "-pax" (rand))]
-    ;;just draw a straight line between from and to for now.
-    {:id   arc
-     :name arc
-     :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
-                                                               (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
-                :width 1
-                :clampToGround false}
-     :properties {:move-type "pax"}}))
+(defn pax-movement
+  [from to start stop]
+   ;;just draw a straight line between from and to for now.
+   (let [arc (str from "->" to "-pax" (rand))]
+     ;;just draw a straight line between from and to for now.
+     {:id   arc
+      :name arc
+      :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
+                                                                      (stop  :long) (stop  :lat) 200])}
+                 :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
+                 :width 1
+                 :clampToGround false}
+      :properties {:move-type "pax"}}))
 
+(def dummy-move [0  -78.59   35.08   30000
+                 3  -79.0052 35.1015 1000
+                 22 13.4605  51.0804 1000])
+
+(defn ->move [from transit to tstart tstop & {:keys [id imagery move-types]}]
+  (let [id (or id (str "-move" (rand)))
+        id-pos (str id "#position")
+        bbid   (str id "-bb")
+        {:keys [Patch Icon]} (or imagery
+                                 (rand-nth ea/known-imagery))
+        moves [from transit to]
+        dynavail (time/interval tstart tstop)]
+    [(when (move-types :pax)
+       (-> (czml/->arcing-path id
+                               tstart
+                               (czml/decompose-move (util/geo-jitter* moves))
+                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
+                               :material {:solidColor {:color {:rgba [255 0 0 175]}}}
+                               :lerp-level 2 :width 1)
+           (assoc :properties {:move-type "pax"})
+           (assoc-in [:path :show] false)
+           (update :position util/interpolate :interp-degree 5 )))
+
+     (when (move-types :equipment)
+       (-> (czml/->arcing-path (str id ":eq")
+                               tstart
+                               (czml/decompose-move (util/-geo-jitter* moves))
+                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
+                               :material {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
+                               :lerp-level 2 :width 1)
+           (assoc :properties {:move-type "equipment"})
+           (assoc-in [:path :show] false)
+           (update :position util/interpolate :interp-degree 5 )))
+     {:id   bbid
+      :name bbid
+      :billboard {:image (ea/patch-path Patch)
+                  :scale 0.25 #_0.35
+                  :pixelOffset {:cartesian2 [0 0]}
+                  :eyeOffset   {:cartesian [0 0 -10000]}}
+      :position {:reference id-pos}
+      :availability dynavail
+      :properties {:billboard-type "patch"}}
+     {:id   (str bbid "src")
+      :name (str bbid "src")
+      :billboard {:image (ea/icon-path Icon)
+                  :scale 0.85 #_1.0
+                  :pixelOffset {:cartesian2 [63 0]}
+                  :eyeOffset   {:cartesian [0 0 -10000]}}
+      :availability dynavail
+      :position {:reference id-pos}
+      :properties {:billboard-type "icon"}}]))
+
+(def ger [49.27	73.3 1000])
+
+
+(defn random-move []
+  (let [edge      (rand-nth (keys connections))
+        [from to] edge
+        {:keys [start stop]} (connections edge)
+        origin->poe (rand-nth (range 1 11))
+        poe->pod    (rand-nth (range 3 30))
+        total       (+ origin->poe poe->pod)
+        tstart      (time/add-days +now+ (rand-int 180))]
+    (->move [0 (start :long) (start :lat) 300000]
+            [origin->poe (stop :long) (stop :lat) 100000]
+            (into [total] ger)
+            tstart
+            (add-days tstart total) :id  (str "beavis" (rand)) :move-types #{:pax :equipment})))
 
 (defn movement->growing [mv start stop]
   (let [t1     (str (->jd start))
@@ -218,134 +288,6 @@
       :properties {:billboard-type "icon"}
       :availability dynavail}
      (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
-
-
-(def +day-seconds+  86400)
-(def +hour-seconds+ 3600)
-(def ger [49.27	73.3])
-
-(defn ->path [id availability moves-t-long-lat-height
-              & {:keys [material width leadTime trailTime resolution epoch lerp-level]
-                 :or {material {:polylineOutline {:color {:rgba [255, 0, 255, 255]},
-                                                  :outlineColor {:rgba [0, 255, 255, 255]}
-                                                  :outlineWidth 5}}
-                      width 8
-                      resolution +day-seconds+
-                      lerp-level 0}}]
-  (let [pos (util/->sampled-degrees moves-t-long-lat-height
-              :scale resolution :epoch epoch :lerp-level lerp-level)]
-  {:id id
-   :name (str "path" id)
-   :description "a random path!"
-   :availability availability,
-   :path {:material material
-          :width    width,
-          :leadTime leadTime
-          :trailTime trailTime
-          :resolution resolution}
-   :position pos}))
-
-(defn demo-path []
-  (let [scale #(* % +day-seconds+)
-        day-samples [0  -78.59   35.08   10000
-                     10 -79.0052 35.1015 5000
-                     22 13.4605  51.0804 0]
-        scaled-samples (->> (for [[t y x z] (->> (partition 4 day-samples)
-                                                 (util/lerpn 3))]
-                              [(scale t) y x z])
-                            (apply concat)
-                            vec)
-        tstart (->jd +now+)
-        tstop  (add-jdays (->jd +now+) 22)
-        avail  (str tstart "/" tstop)]
-    (->path "demo-path"
-            avail
-            scaled-samples
-            :epoch (str (->jd +now+))
-            :leadTime 0)))
-
-(defn bouncy-path [floor ceiling xs]
-  (let [[start middle stop] (util/ensure-partitions 4 xs)
-        [ts xs ys zs] start
-        [tf xf yf zf] stop
-        [t x y z]     (util/midpoint middle stop)
-        [tt xx yy zz] (util/midpoint start middle)]
-    [[ts xs ys ceiling] [tt xx yy floor] middle [t x y zf] [tf xf yf floor]]))
-
-(defn geo-jitter [xs]
-  (util/jitter-xyz [0.25 0.25 0] xs))
-
-;;it would be nice to concat 2 paths.
-
-
-(defn demo-path2 []
-  (let [samples (geo-jitter [0  -78.59   35.08   30000
-                             3  -79.0052 35.1015 30000
-                             22 13.4605  51.0804 1000])
-        tstart +now+
-        tstop  (add-days +now+ 22)
-        avail  (interval tstart tstop)]
-    (-> (->path "demo-path"
-                avail
-                samples
-                :epoch    (iso-str +now+)
-                :leadTime 0
-                :resolution +day-seconds+
-                :width    1
-                :material {:solidColor {:color        {:rgba [255 0 0 130]}}})
-        (update :position util/interpolate :interp-degree 2 ))))
-
-(defn ->arcing-path [id start-stop  moves
-                     & {:keys [scale material width lerp-level]
-                        :or {material {:solidColor
-                                       {:color
-                                        {:rgba [255 255 255 255]}}}
-                             width 1
-                             lerp-level 1}}]
-  (let [[tstart tstop] (if (coll? start-stop)
-                         start-stop
-                         [start-stop nil])
-        tstop (or tstop
-                  (->> moves
-                       (util/ensure-partitions 4)
-                       (map first)
-                       (reduce max)
-                       (add-days tstart)))
-        avail  (interval tstart tstop)]
-    (-> (->path id
-                avail
-                moves
-                :epoch (iso-str +now+)
-                :leadTime 0
-                :resolution +day-seconds+
-                :material material
-                :width width
-                :lerp-level lerp-level)
-        (update :position util/interpolate :interp-degree 5))))
-
-(defn demo-path3 []
-  (let [move1  (util/ensure-partitions 4 [0  -78.59   35.08   30000
-                                          3  -78.59   35.08 1000])
-        move2 [3.00  -78.59   35.08 1000
-               12.5 -32.77235 43.09095 1000000
-               22 13.4605  51.0804 1000]
-        move2 (util/spline-degrees 5 (geo-jitter  move2))]
-  (-> (->arcing-path "blah" +now+
-                     (concat move1 move2)
-                     #_[0  -78.59   35.08   30000
-                        3  -78.59   35.08 1000
-                        12.5 -32.77235 43.09095 1500000
-                        22 13.4605  51.0804 1000]
-                     :material {:solidColor {:color {:rgba [255 0 0 130]}}}
-                     :lerp-level 3 :width 5)
-      (assoc :billboard {:image "/icons/div.png"
-                         :scale 0.1
-                         ;:pixelOffset {:cartesian2 [0 0]}
-                         :eyeOffset   {:cartesian [0 0 -500000]}
-                         }))))
-
-
-
 #_
 (defn equipment-movement [from to start stop]
   (let [arc (str from "->" to "-eq" (rand))]

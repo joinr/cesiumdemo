@@ -113,17 +113,27 @@
 (defn jitter- [n]
   (- n (* (rand) 0.25)))
 
-(defn jitter-xyz
+(defn jitter-txyz [[sz sy sz] [t x y z]]
+  [t (+ x (*  (rand)))
+   (+ y (* sy (rand)))
+   (+ z (* sz (rand)))])
+
+(defn jitter-txyz*
   ([scale xs]
    (let [[sx sy sz] scale]
      (->> xs
           (ensure-partitions 4)
-          (map (fn [[t x y z]]
-                 [t (+ x (*  (rand)))
-                  (+ y (* sy (rand)))
-                  (+ z (* sz (rand)))])))))
-  ([xs] (jitter-xyz [1 1 1] xs)))
+          (map #(jitter-txyz scale %)))))
+  ([xs] (jitter-txyz* [1 1 1] xs)))
 
+(defn geo-jitter* [xs]
+  (jitter-txyz* [0.25 0.25 0] xs))
+
+(defn -geo-jitter* [xs]
+  (jitter-txyz* [-0.25 -0.25 0] xs))
+
+(defn geo-jitter [x]
+  (jitter-txyz [0.25 0.25 0] x))
 
 (defn ->splinexyz [times points]
   (js/Cesium.CatmullRomSpline.

@@ -1,9 +1,72 @@
 ;;pending NS for defining helpers to go from
 ;;EDN->CZML easily.
 (ns cesiumdemo.czml
-  (:require [cesiumdemo.time :as time]
+  (:require [cesiumdemo.time :as time :refer [add-days interval iso-str]]
             [cesiumdemo.util :as util]
             [goog.object :as gobject]))
+
+(def +day-seconds+  86400)
+(def +hour-seconds+ 3600)
+
+(defn ->path [id availability moves-t-long-lat-height
+              & {:keys [material width leadTime trailTime resolution epoch lerp-level]
+                 :or {material {:polylineOutline {:color {:rgba [255, 0, 255, 255]},
+                                                  :outlineColor {:rgba [0, 255, 255, 255]}
+                                                  :outlineWidth 5}}
+                      width 8
+                      resolution +day-seconds+
+                      lerp-level 0}}]
+  (let [pos (util/->sampled-degrees moves-t-long-lat-height
+              :scale resolution :epoch epoch :lerp-level lerp-level)]
+  {:id id
+   :name (str "path" id)
+   :description "a random path!"
+   :availability availability,
+   :path {:material material
+          :width    width,
+          :leadTime leadTime
+          :trailTime trailTime
+          :resolution resolution}
+   :position pos}))
+
+(defn ->arcing-path [id start-stop  moves
+                     & {:keys [scale material width lerp-level]
+                        :or {material {:solidColor
+                                       {:color
+                                        {:rgba [255 255 255 255]}}}
+                             width 1
+                             lerp-level 1}}]
+  (let [[tstart tstop] (if (coll? start-stop)
+                         start-stop
+                         [start-stop nil])
+        tstop (or tstop
+                  (->> moves
+                       (util/ensure-partitions 4)
+                       (map first)
+                       (reduce max)
+                       (add-days tstart)))
+        avail  (interval tstart tstop)]
+    (-> (->path id
+                avail
+                moves
+                :epoch (iso-str tstart)
+                :leadTime 0
+                :resolution +day-seconds+
+                :material material
+                :width width
+                :lerp-level lerp-level)
+        (update :position util/interpolate :interp-degree 5))))
+
+
+(defn decompose-move [xs & {:keys [transit-height]}]
+  (let [xs  (util/ensure-partitions 4 xs)
+        [origin poe pod]         xs
+        [origin transit1 poe :as mv1]   (util/lerpn 1 [origin poe])
+        [t y x z] poe
+        [poe2 transit2 pod :as mv2]     (util/lerpn 1 [[(+ t 0.001) y x z] pod])
+        mv2 (if transit-height [poe2 (assoc transit2 3 transit-height) pod] mv2)]
+    (concat (util/spline-degrees 1 mv1)
+            (util/spline-degrees 1 mv2))))
 
 ;;one thing we want to do is have a simple conversion
 ;;for our time/epoch stuff.  So we can do date/time manipulation,
@@ -118,3 +181,63 @@
 
 ;; ;;infinite interval, collection implies cartesian property.
 ;;  [t x y z] => {:cartesian  [t x y z]}
+
+
+;;Random experiments with the API during path
+;;construction...
+
+;; (defn demo-path2 []
+;;   (let [samples (geo-jitter* [0  -78.59   35.08   30000
+;;                               3  -79.0052 35.1015 30000
+;;                               22 13.4605  51.0804 1000])
+;;         tstart +now+
+;;         tstop  (add-days +now+ 22)
+;;         avail  (interval tstart tstop)]
+;;     (-> (->path "demo-path"
+;;                 avail
+;;                 samples
+;;                 :epoch    (iso-str +now+)
+;;                 :leadTime 0
+;;                 :resolution +day-seconds+
+;;                 :width    1
+;;                 :material {:solidColor {:color        {:rgba [255 0 0 130]}}})
+;;         (update :position util/interpolate :interp-degree 2 ))))
+
+;; (defn tllh->carts [xs]
+;;   (->> xs
+;;        (util/ensure-partitions 4)
+;;        (map (fn [[t lng lat h]]
+;;               (js/Cesium.Cartographic. lng lat h)))))
+
+;; (defn ^js/Cesium.Cartographic ->elipsoid-interp [n from to]
+;;   (let [e    (js/Cesium.EllipsoidGeodesic. from to)
+;;         step (/ 1.0 n)
+;;         res  (js/Cesium.Cartographic.)]
+;;     (for [i (concat (range 0.0 1.0 step) [1.0])]
+;;       (let [res  (.interpolateUsingFraction e i)]
+;;             [i (.-longitude res) (.-latitude res) (.-height  res)]))))
+
+;; (defn ->elipsoid-path [n xs]
+;;   (apply concat
+;;     (for [[l r] (partition 2 1 (util/ensure-partitions 4 xs))]
+;;       (let [[t1 lng1 lat1 h1] l
+;;             [t2 lng2 lat2 h2] r
+;;             dt (- t2 t1)
+;;             [frac cart] (->elipsoid-interp n (js/Cesium.Cartographic. lng1 lat1 h1)
+;;                                              (js/Cesium.Cartographic. lng2 lat2 h2))]
+;;         [(+ t1 (* frac dt)) (.-long cart) (.-lat cart) (.-height cart)]))))
+
+
+;; (defn demo-path3 []
+;;   (let [moves (czml/decompose-move dummy-move :transit-height 500000)]
+;;     [(czml/->arcing-path "blah" +now+
+;;                          moves
+;;                          :material {:solidColor {:color {:rgba [255 0 0 130]}}}
+;;                          :lerp-level 0 :width 5)
+;;      {:id "blah-billboard"
+;;       :name "blah-bb"
+;;       :billboard {:image "/icons/div.png"
+;;                   :scale 0.1
+;;                   :eyeOffset   {:cartesian [0 0 -100000]}
+;;                   }
+;;       :position {:reference "blah#position"}}]))
