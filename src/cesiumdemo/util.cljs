@@ -113,8 +113,22 @@
 (defn jitter- [n]
   (- n (* (rand) 0.25)))
 
-(defn jitter-txyz [[sz sy sz] [t x y z]]
-  [t (+ x (*  (rand)))
+(defn jitter-xyz [[sx sy sz] [x y z]]
+  [(+ x (* sx (rand)))
+   (+ y (* sy (rand)))
+   (+ z (* sz (rand)))])
+
+(defn jitter-xyz*
+  ([scale xs]
+   (let [[sx sy sz] scale]
+     (->> xs
+          (ensure-partitions 3)
+          (map #(jitter-xyz scale %)))))
+  ([xs] (jitter-xyz* [1 1 1] xs)))
+
+(defn jitter-txyz [[sx sy sz] [t x y z]]
+  [t
+   (+ x (* sx (rand)))
    (+ y (* sy (rand)))
    (+ z (* sz (rand)))])
 

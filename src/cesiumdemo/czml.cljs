@@ -291,3 +291,72 @@
       :availability dynavail
       :position {:reference id-pos}
       :properties {:billboard-type "icon"}}]))
+
+;; (defn movement->growing [mv start stop]
+;;   (let [t1     (str (->jd start))
+;;         t2     (str (->jd stop))
+;;         t2+    (str (->jd stop))
+;;         t3     (str (->jd (add-days stop 365)))
+;;         from   (str (gensym "from"))
+;;         to     (str (gensym "target"))
+;;         dynavail  (str t1 "/" t2)
+;;         staticavail (str t2+ "/" t3)
+;;         {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
+;;         source {:id from
+;;                 :name from
+;;                 :availability dynavail
+;;                 :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}
+;;                 :properties {:move-type "source"}}
+;;         target {:id   to
+;;                 :name to
+;;                 :availability dynavail
+;;                 :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
+;;                                                              (into [t2] (drop 3 cartographicDegrees))
+;;                                                              (into [t3] (drop 3 cartographicDegrees))))
+;;                            :interpolationAlgorithm "LAGRANGE"}
+;;                 :properties {:move-type "target"}}
+;;         id     (mv :id)
+;;         bbid (str "randmove" (rand))
+;;         {:keys [Patch Icon]} (rand-nth ea/known-imagery)]
+;;     [source
+;;      target
+;;      (-> mv
+;;       (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
+;;       (assoc :availability dynavail :id (str id  "_dynamic")))
+;;      ;;entity icons that follow the to of the move....
+;;      {:id   bbid
+;;       :name bbid
+;;       :billboard {:image (ea/patch-path Patch)
+;;                   :scale 0.35
+;;                   :pixelOffset {:cartesian2 [0 0]}
+;;                   :eyeOffset   {:cartesian [0 0 -500000]}}
+;;       :position {:reference (str to "#position")}
+;;       :availability dynavail
+;;       :properties {:billboard-type "patch"}}
+;;      {:id   (str bbid "src")
+;;       :name (str bbid "src")
+;;       :billboard {:image (ea/icon-path Icon)
+;;                   :scale 1.0
+;;                   :pixelOffset {:cartesian2 [63 0]}
+;;                   :eyeOffset   {:cartesian [0 0 -500000]}}
+;;       :position {:reference (str to "#position")}
+;;       :properties {:billboard-type "icon"}
+;;       :availability dynavail}
+;;      (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
+
+;; (defn random-movement []
+;;   (let [edge (rand-nth (keys connections))
+;;         [from to] edge
+;;         {:keys [start stop]} (connections edge)]
+;;    [(equipment-movement from to start stop)
+;;     (pax-movement from to start stop)]))
+
+;; (defn time-based-movement
+;;   [start duration mv]
+;;   (let [pos1 (-> mv :polyline)]
+;;     (movement->growing mv start  (add-days start duration))))
+
+;; (defn random-time [init span]
+;;   (str (->jd (add-days init (rand-int span)))
+;;              "/"
+;;              (->jd (add-days init 1000))))

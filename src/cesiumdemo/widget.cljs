@@ -10,8 +10,11 @@
 (defonce view
   (r/atom {}))
 
+(defn ^js/Cesium.Viewer get-view [id]
+  (some-> view deref id))
+
 (defn ^js/Cesium.Viewer current-view []
-  (some-> view deref :current))
+  (get-view :current))
 
 (defn set-extents! [x1 y1 x2 y2]
   (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
@@ -23,10 +26,11 @@
 (defn ->viewer [el {:keys [] :as opts}]
   (js/Cesium.Viewer. el (clj->js opts)))
 
-(defn ^js/Cesium.Clock clock [] (-> view deref :current .-clock))
+(defn ^js/Cesium.Clock clock [& {:keys [id] :or {id :current}}]
+  (-> view deref (get id) .-clock))
 
 ;;basic reagent component.
-(defn cesium-viewer [{:keys [name opts]}]
+(defn cesium-viewer [{:keys [name opts id] :or {id :current}}]
   (let [vw (keyword (str name "-view"))]
     (r/create-class
      {:display-name (str name)
@@ -34,42 +38,34 @@
       :component-did-mount
       (fn [this]
         (let [v (->viewer (r/dom-node this) opts)
-              _ (swap! view assoc :current v)]
-          v))
-      #_:component-did-update
-      #_(fn [this]
-          (when-let [view (get @app-state vw)]
-            (.update view)))
-      #_:component-will-update
-      #_(fn [this]
-          (let [view (chart {:el (r/dom-node this)})
-                _    (swap! app-state assoc :view view)]
-            (.update view)))})))
+              _ (swap! view assoc id v)]
+          v))})))
 
 
 ;;stateful API for working with a "Single" current view....
-(defn load-czml! [coll]
-  (let [p (js/Cesium.CzmlDataSource.load coll)]
-    (.add  (.-dataSources (@view :current))
+(defn load-czml! [coll & {:keys [id] :or {id :current}}]
+  (let [p (js/Cesium.CzmlDataSource.load coll)
+        v  (@view id)]
+    (.add  (.-dataSources v)
            p)))
 
-(defn load-kml! [path]
-  (let [v (@view :current)
+(defn load-kml! [path & {:keys [id] :or {id :current}}]
+  (let [v (get @view id)
         p (js/Cesium.KmlDataSource.load path #js{:camera (.. v -scene -camera)
                                                  :canvas (.. v -scene -canvas)})]
-    (.add  (.-dataSources (@view :current))
+    (.add  (.-dataSources v)
            p)))
 
-(defn load-geojson! [path & {:keys [stroke fill strokeWidth] :as style}]
+(defn load-geojson! [path & {:keys [stroke fill strokeWidth id] :as style :or {id :current}}]
   (let [style (if style style
                   {:stroke Cesium.Color.BLACK
                    :fill  (js/Cesium.Color.GREY.withAlpha 0.5),
                    :strokeWidth 3})
-        v (@view :current)
+        v (@view id)
         p (js/Cesium.GeoJsonDataSource.load path #js{:camera (.. v -scene -camera)
                                                      :canvas (.. v -scene -canvas)
                                                      :stroke (style :stroke)
                                                      :fill (style :fill)
                                                      :strokeWidth (style :strokeWidth)} style)]
-    (.add  (.-dataSources (@view :current))
+    (.add  (.-dataSources v)
            p)))

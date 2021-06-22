@@ -246,36 +246,34 @@
         ttransit  (time/add-days tstart dtransit)
         tstop     (time/add-days tstart  dstop)
 
-        ;; moves2 (->> [from transit to]
-        ;;             (util/ensure-partitions 3)
-        ;;             (map (fn [t [lng lat h]]
-        ;;                    [t lng lat h]) (map iso-str  [tstart
-        ;;                                                  (time/add-days tstart dtransit)
-        ;;                                                  (time/add-days tstart dstop)]))
-        ;;             util/catvec)
-
-        moves (->> [from transit to]
+       moves (->> [from transit to]
                    (util/ensure-partitions 3)
                    (map (fn [t [lng lat h]]
                           [t lng lat h]) [0 dtransit dstop]))
         [f tr t] moves
-        mp (util/midpoint tr t)
-        moves (util/catvec (for [[dt lng lat h] [f tr mp t]]
+        mult  (if (< (rand) 0.5) -1 1)
+        mp    (->> (util/midpoint tr t)
+                   ;;we can jitter the midpoint...
+                   (util/jitter-txyz [(* mult 10) (* mult 10) 1000]))
+        splined-path (util/spline-degrees 1 [tr mp t])
+        moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path) #_[f tr mp t]]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 
         dynavail    (time/interval tstart ttransit)
         allavail    (time/interval tstart   (time/add-days tstop 365))
         staticavail (time/interval ttransit (time/add-days tstop 365))
+        sharedavail (time/interval ttransit tstop)
         source {:id from-id
                 :name from-id
                 :availability dynavail
                 :position   {:cartographicDegrees from}
-                :properties {:move-type "source"}}
+                :properties {:move-type "source" :shared true}}
         target {:id to-id
                 :name to-id
                 :availability allavail
                 :position   {:cartographicDegrees moves
-                             :interpolationAlgorithm "LAGRANGE"}}
+                             :interpolationAlgorithm "LAGRANGE"}
+                :properties {:move-type "target" :shared true}}
         from-pos   (str from-id "#position")
         target-pos (str to-id "#position")]
     (concat
@@ -290,129 +288,58 @@
                   :pixelOffset {:cartesian2 [0 0]}
                   :eyeOffset   {:cartesian [0 0 -10000]}}
       :position {:reference target-pos}
-      :availability allavail
-      :properties {:billboard-type "patch"}}
+      :availability dynavail
+       :properties {:billboard-type "patch" :shared true :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
       :billboard {:image (ea/icon-path Icon)
                   :scale 0.85
                   :pixelOffset {:cartesian2 [63 0]}
                   :eyeOffset   {:cartesian [0 0 -10000]}}
-      :availability allavail
+      :availability dynavail
       :position {:reference target-pos}
-      :properties {:billboard-type "icon"}}]
-    )))
+      :properties {:billboard-type "icon" :shared true :shared-avail sharedavail}}]
+     )))
+
+(defn shrink-icon  [r]
+  (if (r :billboard)
+    (case (-> r :properties :billboard-type)
+      "icon"  (update-in r [:billboard :scale] * 0.5)
+      "patch" (update r :billboard
+                      (fn [{:keys [scale pixelOffset] :as r}]
+                        (assoc r :scale (* 0.5 scale)
+                              :pixelOffset {:cartesian2 [50 0]})))
+      r)
+    r))
 
 (def ger [11.430040468408205	49.80008750153199 10000])
 
-(def last-move (atom nil))
-
-(defn random-move []
+(defn random-move [& {:keys [tstart origin->poe poe->pod destination]
+                      :or {destination ger}}]
   (let [edge      (rand-nth (keys connections))
         [from to] edge
         {:keys [start stop]} (connections edge)
-        origin->poe (rand-nth (range 1 11))
-        poe->pod    (rand-nth (range 3 30))
+        origin->poe (or origin->poe (rand-nth (range 1 11)))
+        poe->pod    (or poe->pod (rand-nth (range 3 30)))
         total       (+ origin->poe poe->pod)
-        tstart      (time/add-days +now+ (rand-int 180))]
-    (reset! last-move
-            (->move [(start :long) (start :lat) 300000]
-                    [(stop :long) (stop :lat) 100000]
-                    ger
-                    tstart
-                    origin->poe total :id  (str "beavis" (rand)) :move-types #{:pax :equipment}
-                    :from-name from :to-name to))))
-
-(defn movement->growing [mv start stop]
-  (let [t1     (str (->jd start))
-        t2     (str (->jd stop))
-        t2+    (str (->jd stop))
-        t3     (str (->jd (add-days stop 365)))
-        from   (str (gensym "from"))
-        to     (str (gensym "target"))
-        dynavail  (str t1 "/" t2)
-        staticavail (str t2+ "/" t3)
-        {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
-        source {:id from
-                :name from
-                :availability dynavail
-                :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}
-                :properties {:move-type "source"}}
-        target {:id   to
-                :name to
-                :availability dynavail
-                :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
-                                                             (into [t2] (drop 3 cartographicDegrees))
-                                                             (into [t3] (drop 3 cartographicDegrees))))
-                           :interpolationAlgorithm "LAGRANGE"}
-                :properties {:move-type "target"}}
-        id     (mv :id)
-        bbid (str "randmove" (rand))
-        {:keys [Patch Icon]} (rand-nth ea/known-imagery)]
-    [source
-     target
-     (-> mv
-      (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
-      (assoc :availability dynavail :id (str id  "_dynamic")))
-     ;;entity icons that follow the to of the move....
-     {:id   bbid
-      :name bbid
-      :billboard {:image (ea/patch-path Patch)
-                  :scale 0.35
-                  :pixelOffset {:cartesian2 [0 0]}
-                  :eyeOffset   {:cartesian [0 0 -500000]}}
-      :position {:reference (str to "#position")}
-      :availability dynavail
-      :properties {:billboard-type "patch"}}
-     {:id   (str bbid "src")
-      :name (str bbid "src")
-      :billboard {:image (ea/icon-path Icon)
-                  :scale 1.0
-                  :pixelOffset {:cartesian2 [63 0]}
-                  :eyeOffset   {:cartesian [0 0 -500000]}}
-      :position {:reference (str to "#position")}
-      :properties {:billboard-type "icon"}
-      :availability dynavail}
-     (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
-#_
-(defn equipment-movement [from to start stop]
-  (let [arc (str from "->" to "-eq" (rand))]
-    ;;just draw a straight line between from and to for now.
-    {:id   arc
-     :name arc
-     :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
-                                                                     (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
-                :width 1
-                :clampToGround false}
-     :properties {:move-type "equipment"}}))
-
-(defn random-movement []
-  (let [edge (rand-nth (keys connections))
-        [from to] edge
-        {:keys [start stop]} (connections edge)]
-   [(equipment-movement from to start stop)
-    (pax-movement from to start stop)]))
-
-(defn time-based-movement
-  [start duration mv]
-  (let [pos1 (-> mv :polyline)]
-    (movement->growing mv start  (add-days start duration))))
-
-(defn random-time [init span]
-  (str (->jd (add-days init (rand-int span)))
-             "/"
-             (->jd (add-days init 1000))))
+        tstart      (or tstart (time/add-days +now+ (rand-int 180)))
+        mult        (if (> (rand) 0.5) -1 1)
+        move-type   (rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
+    (->move [(start :long) (start :lat) 300000]
+            [(stop :long) (stop :lat) 100000]
+            (util/jitter-xyz [(* mult 2.5) (* mult 2.5) 0] destination)
+            tstart
+            origin->poe total :id  (str "beavis" (rand)) :move-types #{:pax :equipment}
+            :from-name from :to-name to)))
 
 (defn random-movements
   ([n]
-   (->czml-packets "moves" (apply concat (repeatedly n random-movement))))
+   #_(->czml-packets "moves" (apply concat (repeatedly n random-move)))
+   (apply concat (repeatedly n random-move)))
   ([start n]
-   (->> (repeatedly n #(let [tstart   (add-days start (rand-int 180))
-                             duration (rand-int 15)]
-                         (mapcat (fn [mv] (time-based-movement tstart duration mv)) (random-movement))))
+   (->> (repeatedly n #(random-move :tstart (add-days start (rand-int 180))))
         (apply concat)
-        (->czml-packets "moves"))))
+        #_(->czml-packets "moves"))))
 
 (defn layers! []
   (do (states!)
@@ -423,33 +350,42 @@
   (ces/load-czml! (random-movements 500)))
 
 (defn timed-random-moves! []
-  (ces/load-czml! (random-movements +now+ 500)))
+  (let [rands  (random-movements +now+ 500)
+        shared (->> rands
+                    (filter (fn [r] (or (some-> r :properties :shared)
+                                        (= (r :id) "document"))))
+                    (map (fn [r]
+                           (assoc r :availability (-> r :properties :shared-avail))))
+                    (map shrink-icon))]
+    (ces/load-czml! (->czml-packets "moves" rands) :id :current)
+    (ces/load-czml! (->czml-packets "moves" shared) :id :inset)))
 
 (defn tada!       [] (do (layers!) (moves!)))
 (defn tada-timed! [] (do (layers!) (timed-random-moves!)))
 
 (defn ^js/Cesium.DataSourceCollection
-  get-layers! []
-  (-> (ces/current-view) .-dataSources))
+  get-layers! [& {:keys [id] :or {id :current}}]
+  (-> id ces/get-view .-dataSources))
 
-(defn imagery-layers []
-  (-> (ces/current-view) .-imageryLayers))
+(defn imagery-layers [& {:keys [id] :or {id :current}}]
+  (-> id ces/get-view .-imageryLayers))
 
-(defn layer-names []
-  (for [^js/Cesium.DataSource v (-> (ces/current-view) .-dataSources .-_dataSources)]
-    (.-name v))) 
+(defn layer-names [& {:keys [id] :or {id :current}}]
+  (for [^js/Cesium.DataSource v (-> id ces/get-view .-dataSources .-_dataSources)]
+    (.-name v)))
 
 (defn ^js/Cesium.EntityCollection
-  get-layer! [id]
-  (-> (get-layers!) (.getByName id) first))
+  get-layer! [k & {:keys [id] :or {id :current}}]
+  (-> (get-layers! :id id) (.getByName k) first))
 
-(defn drop-layer! [id]
-  (let [l   (get-layers!)
-        tgt (first (.getByName l id))]
+
+(defn drop-layer! [k & {:keys [id] :or {id :current}}]
+  (let [l   (get-layers! :id id)
+        tgt (first (.getByName l k))]
     (.remove l tgt true)))
 
-(defn entities-in [layer]
-  (-> (get-layer! layer)
+(defn entities-in [layer & {:keys [id] :or {id :current}}]
+  (-> (get-layer! layer :id id)
       .-_entityCollection
       .-values
       ))
@@ -504,6 +440,7 @@
 
 (defn clear-moves! []
   (drop-layer! "moves")
+  (drop-layer! "moves" :id :inset)
   (swap! app-state dissoc :entities)
   (v/rewind-samples! :flow-plot-view "c-day" 0))
 
@@ -515,11 +452,26 @@
 ;;UI / Page
 ;;=========
 
+(def shared-clock (js/Cesium.ClockViewModel.))
+
 (def viewer-options
   {:skyBox false
    :baseLayerPicker false
    :imageryProvider (-> local-layers :blue-marble)
-   :geocoder false})
+   :geocoder false
+   :clockViewModel shared-clock})
+
+(def inset-options
+  (merge viewer-options
+         {:sceneMode Cesium.SceneMode.COLUMBUS_VIEW
+          :animation false
+          :fullscreenButton false
+          :homeButton        false
+          :infoBox          false
+          :timeline         false
+          :navigationHelpButton false
+          :sceneModePicker false
+          }))
 
 ;;todo : figure out way to allow online toggle.
 (def online-options
@@ -530,6 +482,12 @@
     (fn []
       [:div.cesiumContainer {:class "fullSize"}
        [ces/cesium-viewer {:name "cesium" :opts viewer-options}]])))
+
+(defn cesium-inset []
+  (let [_ (js/console.log "Starting the cesium-inset")]
+    (fn []
+      [:div.cesiumContainer {} #_{:class "fullSize"}
+       [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset}]])))
 
 (defn legend []
   [:div.my-legend {:style {:margin-top "10px"}}
@@ -567,7 +525,15 @@
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
       "random-moves"]]
     [legend]]
-   [:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
+   #_[:div.header {:id "inset-root" :style {:position "absolute" :bottom "53%" :right "0%" :width "600px" :height "300px"}}
+    [:p {:style {:margin "0 auto"}} "Destination Inset"]
+    [cesium-inset]]
+   #_[:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
+    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]
+   [:div.header {:id "inset-root" :style {:position "absolute" :top "55%"    :right "0%" :width "500px" :height "250px"}}
+    [:p {:style {:margin "0 auto"}} "Destination Inset"]
+    [cesium-inset]]
+   [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%"}}
     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
 
 
