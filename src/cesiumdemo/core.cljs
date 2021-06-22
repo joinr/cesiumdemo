@@ -172,56 +172,140 @@
                  3  -79.0052 35.1015 1000
                  22 13.4605  51.0804 1000])
 
-(defn ->move [from transit to tstart tstop & {:keys [id imagery move-types]}]
-  (let [id (or id (str "-move" (rand)))
-        id-pos (str id "#position")
-        bbid   (str id "-bb")
+#_
+(def mv (->move [-78.59   35.08   30000]
+                [-79.0052 35.1015 1000]
+                [13.4605  51.0804 1000]
+                +now+
+                3
+                22
+                :id "beavis"
+                :move-types #{:pax :equipment}
+                :from-name "bragg"
+                :to-name   "nc"
+                ))
+
+(defn line->dynamic-line [mv start stop]
+  (let [t1     (iso-str  start)
+        t2     (iso-str  stop)
+        t2+    (iso-str  stop)
+        t3     (iso-str  (add-days stop 365))
+        from   (str (gensym "from"))
+        to     (str (gensym "target"))
+        dynavail     (interval t1  t2)
+        staticavail (interval t2+ t3)
+        {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
+        source {:id from
+                :name from
+                :availability dynavail
+                :position {:cartographicDegrees (vec (take 3 cartographicDegrees))}
+                :properties {:move-type "source"}}
+        target {:id   to
+                :name to
+                :availability dynavail
+                :position {:cartographicDegrees (vec (concat (into [t1] (take 3 cartographicDegrees))
+                                                             (into [t2] (drop 3 cartographicDegrees))
+                                                             (into [t3] (drop 3 cartographicDegrees))))
+                           :interpolationAlgorithm "LAGRANGE"}
+                :properties {:move-type "target"}}
+        id     (mv :id)]
+    [source
+     target
+     (-> mv
+      (assoc-in [:polyline :positions] {:references [(str from "#position") (str to "#position")]})
+      (assoc :availability dynavail :id (str id  "_dynamic")))
+     (assoc mv :availability staticavail :id (str id "_static") :name (str (mv :name) "_static"))]))
+
+;;break the move up into 2 pieces...
+;;we have "to" which follows the positions interpolated over time.
+;;then have 2 lines per pax/equip move type that are based on the "to" position,
+;;but they are only shown while the lines are growing (dynamic availability).
+;;Then the lines are switched with static variants for performance.
+;;The billboard follows the "to" position the whole way through.
+;;"to" can actually be the billboard.
+(defn ->move [from transit to tstart dtransit dstop & {:keys [id imagery move-types from-name to-name]}]
+  (let [id      (or id (str "-move" (rand)))
+        id-pos  (str id "#position")
+        bbid    (str id "-bb")
+        from-id (str id "-from")
+        to-id   (str id "-to")
+        vec->lat-long (fn [[lng lat h]] {:lat lat :long lng})
+
+        [pax-src pax-target pax-dynamic pax-static :as pm]
+        (when (move-types :pax)
+           (->  (pax-movement from-name to-name   (vec->lat-long from) (vec->lat-long  transit))
+                (line->dynamic-line tstart (add-days tstart dtransit))))
+        [eq-src eq-target eq-dynamic eq-static :as em]
+        (when (move-types :equipment)
+          (-> (equipment-movement from-name to-name  (vec->lat-long from) (vec->lat-long  transit))
+              (line->dynamic-line tstart (add-days tstart dtransit))))
+
         {:keys [Patch Icon]} (or imagery
                                  (rand-nth ea/known-imagery))
-        moves [from transit to]
-        dynavail (time/interval tstart tstop)]
-    [(when (move-types :pax)
-       (-> (czml/->arcing-path id
-                               tstart
-                               (czml/decompose-move (util/geo-jitter* moves))
-                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
-                               :material {:solidColor {:color {:rgba [255 0 0 175]}}}
-                               :lerp-level 2 :width 1)
-           (assoc :properties {:move-type "pax"})
-           (assoc-in [:path :show] false)
-           (update :position util/interpolate :interp-degree 5 )))
 
-     (when (move-types :equipment)
-       (-> (czml/->arcing-path (str id ":eq")
-                               tstart
-                               (czml/decompose-move (util/-geo-jitter* moves))
-                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
-                               :material {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
-                               :lerp-level 2 :width 1)
-           (assoc :properties {:move-type "equipment"})
-           (assoc-in [:path :show] false)
-           (update :position util/interpolate :interp-degree 5 )))
-     {:id   bbid
+        ttransit  (time/add-days tstart dtransit)
+        tstop     (time/add-days tstart  dstop)
+
+        ;; moves2 (->> [from transit to]
+        ;;             (util/ensure-partitions 3)
+        ;;             (map (fn [t [lng lat h]]
+        ;;                    [t lng lat h]) (map iso-str  [tstart
+        ;;                                                  (time/add-days tstart dtransit)
+        ;;                                                  (time/add-days tstart dstop)]))
+        ;;             util/catvec)
+
+        moves (->> [from transit to]
+                   (util/ensure-partitions 3)
+                   (map (fn [t [lng lat h]]
+                          [t lng lat h]) [0 dtransit dstop]))
+        [f tr t] moves
+        mp (util/midpoint tr t)
+        moves (util/catvec (for [[dt lng lat h] [f tr mp t]]
+                             [(iso-str (time/add-days tstart dt)) lng lat h]))
+
+        dynavail    (time/interval tstart ttransit)
+        allavail    (time/interval tstart   (time/add-days tstop 365))
+        staticavail (time/interval ttransit (time/add-days tstop 365))
+        source {:id from-id
+                :name from-id
+                :availability dynavail
+                :position   {:cartographicDegrees from}
+                :properties {:move-type "source"}}
+        target {:id to-id
+                :name to-id
+                :availability allavail
+                :position   {:cartographicDegrees moves
+                             :interpolationAlgorithm "LAGRANGE"}}
+        from-pos   (str from-id "#position")
+        target-pos (str to-id "#position")]
+    (concat
+     em
+     pm
+     [source
+      target
+      {:id   bbid
       :name bbid
       :billboard {:image (ea/patch-path Patch)
-                  :scale 0.25 #_0.35
+                  :scale 0.25
                   :pixelOffset {:cartesian2 [0 0]}
                   :eyeOffset   {:cartesian [0 0 -10000]}}
-      :position {:reference id-pos}
-      :availability dynavail
+      :position {:reference target-pos}
+      :availability allavail
       :properties {:billboard-type "patch"}}
      {:id   (str bbid "src")
       :name (str bbid "src")
       :billboard {:image (ea/icon-path Icon)
-                  :scale 0.85 #_1.0
+                  :scale 0.85
                   :pixelOffset {:cartesian2 [63 0]}
                   :eyeOffset   {:cartesian [0 0 -10000]}}
-      :availability dynavail
-      :position {:reference id-pos}
-      :properties {:billboard-type "icon"}}]))
+      :availability allavail
+      :position {:reference target-pos}
+      :properties {:billboard-type "icon"}}]
+    )))
 
-(def ger [49.27	73.3 1000])
+(def ger [11.430040468408205	49.80008750153199 10000])
 
+(def last-move (atom nil))
 
 (defn random-move []
   (let [edge      (rand-nth (keys connections))
@@ -231,11 +315,13 @@
         poe->pod    (rand-nth (range 3 30))
         total       (+ origin->poe poe->pod)
         tstart      (time/add-days +now+ (rand-int 180))]
-    (->move [0 (start :long) (start :lat) 300000]
-            [origin->poe (stop :long) (stop :lat) 100000]
-            (into [total] ger)
-            tstart
-            (add-days tstart total) :id  (str "beavis" (rand)) :move-types #{:pax :equipment})))
+    (reset! last-move
+            (->move [(start :long) (start :lat) 300000]
+                    [(stop :long) (stop :lat) 100000]
+                    ger
+                    tstart
+                    origin->poe total :id  (str "beavis" (rand)) :move-types #{:pax :equipment}
+                    :from-name from :to-name to))))
 
 (defn movement->growing [mv start stop]
   (let [t1     (str (->jd start))

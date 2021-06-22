@@ -241,3 +241,53 @@
 ;;                   :eyeOffset   {:cartesian [0 0 -100000]}
 ;;                   }
 ;;       :position {:reference "blah#position"}}]))
+
+
+#_
+(defn ->move [from transit to tstart tstop & {:keys [id imagery move-types]}]
+  (let [id (or id (str "-move" (rand)))
+        id-pos (str id "#position")
+        bbid   (str id "-bb")
+        {:keys [Patch Icon]} (or imagery
+                                 (rand-nth ea/known-imagery))
+        moves [from transit to]
+        dynavail (time/interval tstart tstop)]
+    [(when (move-types :pax)
+       (-> (czml/->arcing-path id
+                               tstart
+                               (czml/decompose-move (util/geo-jitter* moves))
+                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
+                               :material {:solidColor {:color {:rgba [255 0 0 175]}}}
+                               :lerp-level 2 :width 1)
+           (assoc :properties {:move-type "pax"})
+           (assoc-in [:path :show] false)
+           (update :position util/interpolate :interp-degree 5 )))
+
+     (when (move-types :equipment)
+       (-> (czml/->arcing-path (str id ":eq")
+                               tstart
+                               (czml/decompose-move (util/-geo-jitter* moves))
+                               :transit-height (min (* (inc (rand 4)) 100000) 200000)
+                               :material {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
+                               :lerp-level 2 :width 1)
+           (assoc :properties {:move-type "equipment"})
+           (assoc-in [:path :show] false)
+           (update :position util/interpolate :interp-degree 5 )))
+     {:id   bbid
+      :name bbid
+      :billboard {:image (ea/patch-path Patch)
+                  :scale 0.25 #_0.35
+                  :pixelOffset {:cartesian2 [0 0]}
+                  :eyeOffset   {:cartesian [0 0 -10000]}}
+      :position {:reference id-pos}
+      :availability dynavail
+      :properties {:billboard-type "patch"}}
+     {:id   (str bbid "src")
+      :name (str bbid "src")
+      :billboard {:image (ea/icon-path Icon)
+                  :scale 0.85 #_1.0
+                  :pixelOffset {:cartesian2 [63 0]}
+                  :eyeOffset   {:cartesian [0 0 -10000]}}
+      :availability dynavail
+      :position {:reference id-pos}
+      :properties {:billboard-type "icon"}}]))
