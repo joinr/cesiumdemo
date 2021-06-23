@@ -47,14 +47,16 @@
   (let [p (js/Cesium.CzmlDataSource.load coll)
         v  (@view id)]
     (.add  (.-dataSources v)
-           p)))
+           p)
+    p))
 
 (defn load-kml! [path & {:keys [id] :or {id :current}}]
   (let [v (get @view id)
         p (js/Cesium.KmlDataSource.load path #js{:camera (.. v -scene -camera)
                                                  :canvas (.. v -scene -canvas)})]
     (.add  (.-dataSources v)
-           p)))
+           p)
+    p))
 
 (defn load-geojson! [path & {:keys [stroke fill strokeWidth id] :as style :or {id :current}}]
   (let [style (if style style
@@ -68,4 +70,5 @@
                                                      :fill (style :fill)
                                                      :strokeWidth (style :strokeWidth)} style)]
     (.add  (.-dataSources v)
-           p)))
+           p)
+    p))

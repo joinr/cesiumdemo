@@ -11,7 +11,8 @@
    [cesiumdemo.vega :as v]
    [cesiumdemo.time :as time :refer [->jd add-days iso-str interval]]
    [cesiumdemo.util :as util]
-   [cesiumdemo.czml :as czml]))
+   [cesiumdemo.czml :as czml]
+   [promesa.core :as p]))
 
 #_(set! *warn-on-infer* true)
 
@@ -19,7 +20,7 @@
 ;; Vars
 
 (defonce app-state
-  (reagent/atom {}))
+  (reagent/atom {:loaded false}))
 
 ;;Date/Time Junk
 ;;We have to convert between js/Date and cesium's julian
@@ -30,10 +31,13 @@
 
 (def +now+ (new js/Date))
 
-#_(defn add-days [from n]
-  (let [res (new js/Date from)
-        _  (.setDate res (+ (.getDate res ) n))]
-    res))
+(def shared-clock (js/Cesium.ClockViewModel.))
+
+(defn play! []
+  (set! (.-shouldAnimate shared-clock) true))
+
+(defn stop! []
+  (set! (.-shouldAnimate shared-clock) false))
 
 (defn add-jdays [^js/Cesium.JulianDate  from n]
   (let [res (.clone from)
@@ -357,8 +361,9 @@
                            (assoc r :availability (-> r :properties :shared-avail))))
                     (map shrink-icon))]
     ;;reverse order to ensure we don't skip time!
-    (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
-    (ces/load-czml! (->czml-packets "moves" rands) :id :current)))
+    (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
+           (ces/load-czml! (->czml-packets "moves" rands) :id :current)
+           :done)))
 
 (defn tada!       [] (do (layers!) (moves!)))
 (defn tada-timed! [] (do (layers!) (timed-random-moves!)))
@@ -439,20 +444,19 @@
 
 
 (defn clear-moves! []
+  (stop!)
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
   (swap! app-state dissoc :entities)
   (v/rewind-samples! :flow-plot-view "c-day" 0))
 
 (defn random-moves! []
-  (timed-random-moves!)
-  (derive-movement-stats!))
+  (p/do! (timed-random-moves!)
+         (derive-movement-stats!)))
 
 
 ;;UI / Page
 ;;=========
-
-(def shared-clock (js/Cesium.ClockViewModel.))
 
 (def viewer-options
   {:skyBox false
@@ -524,6 +528,16 @@
       "clear-moves"]
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
       "random-moves"]]
+    [:button.cesium-button {:style {:display "block"} :id "demo" :type "button" :on-click
+                            #(p/do! (println "loading moves")
+                                    (random-moves!)
+                                    (println "done")
+                                    (println "loading-images")
+                                    (when-not (@app-state :loaded)(p/delay 2000))
+                                    (swap! app-state assoc :loaded true)
+                                    (println "done")
+                                    (play!))}
+     "demo"]
     [legend]]
    #_[:div.header {:id "inset-root" :style {:position "absolute" :bottom "53%" :right "0%" :width "600px" :height "300px"}}
     [:p {:style {:margin "0 auto"}} "Destination Inset"]
