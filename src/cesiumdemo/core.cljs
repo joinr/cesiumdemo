@@ -53,6 +53,7 @@
 (def c-time (reagent/atom 0))
 (def c-init (reagent/atom (.-dayNumber (->jd +now+))))
 (def c-day  (reagent/atom 0))
+(def c-offset (reagent/atom 0))
 
 (defn current-day [^js/Cesium.JulianDate curr]
   (- (.-dayNumber curr) @c-init))
@@ -192,7 +193,7 @@
         t3     (iso-str  (add-days stop 365))
         from   (str (gensym "from"))
         to     (str (gensym "target"))
-        dynavail     (interval t1  t2)
+        dynavail     (interval t1  (time/add-seconds stop -1)) ;#_(add-days t2 -1)
         staticavail (interval t2+ t3)
         {:keys [cartographicDegrees] :as m} (-> mv :polyline :positions)
         source {:id from
@@ -254,8 +255,8 @@
         mult  (if (< (rand) 0.5) -1 1)
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
-                   (util/jitter-txyz [(* mult 10) (* mult 10) 1000]))
-        splined-path (util/spline-degrees 1 [tr mp t])
+                   (util/jitter-txyz [(* mult 20) (* mult 20) 100000]))
+        splined-path (util/spline-degrees 2 [tr mp t])
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path) #_[f tr mp t]]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 
@@ -287,9 +288,9 @@
                   :scale 0.25
                   :pixelOffset {:cartesian2 [0 0]}
                   :eyeOffset   {:cartesian [0 0 -10000]}}
-      :position {:reference target-pos}
+       :position {:reference target-pos}
       :availability dynavail
-       :properties {:billboard-type "patch" :shared true :shared-avail sharedavail}}
+      :properties {:billboard-type "patch" :shared true :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
       :billboard {:image (ea/icon-path Icon)
@@ -308,7 +309,7 @@
       "patch" (update r :billboard
                       (fn [{:keys [scale pixelOffset] :as r}]
                         (assoc r :scale (* 0.5 scale)
-                              :pixelOffset {:cartesian2 [50 0]})))
+                              :pixelOffset {:cartesian2 [30 0]})))
       r)
     r))
 
@@ -324,7 +325,7 @@
         total       (+ origin->poe poe->pod)
         tstart      (or tstart (time/add-days +now+ (rand-int 180)))
         mult        (if (> (rand) 0.5) -1 1)
-        move-type   (rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
+        move-type   #{:pax} #_(rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
     (->move [(start :long) (start :lat) 300000]
             [(stop :long) (stop :lat) 100000]
             (util/jitter-xyz [(* mult 2.5) (* mult 2.5) 0] destination)
@@ -332,14 +333,13 @@
             origin->poe total :id  (str "beavis" (rand)) :move-types #{:pax :equipment}
             :from-name from :to-name to)))
 
+(def last-first (atom nil))
 (defn random-movements
   ([n]
    #_(->czml-packets "moves" (apply concat (repeatedly n random-move)))
-   (apply concat (repeatedly n random-move)))
+   (apply concat  (repeatedly n random-move)))
   ([start n]
-   (->> (repeatedly n #(random-move :tstart (add-days start (rand-int 180))))
-        (apply concat)
-        #_(->czml-packets "moves"))))
+   (apply concat (repeatedly n #(random-move :tstart (add-days start (rand-int 180)))))))
 
 (defn layers! []
   (do (states!)
@@ -357,8 +357,9 @@
                     (map (fn [r]
                            (assoc r :availability (-> r :properties :shared-avail))))
                     (map shrink-icon))]
-    (ces/load-czml! (->czml-packets "moves" rands) :id :current)
-    (ces/load-czml! (->czml-packets "moves" shared) :id :inset)))
+    ;;reverse order to ensure we don't skip time!
+    (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
+    (ces/load-czml! (->czml-packets "moves" rands) :id :current)))
 
 (defn tada!       [] (do (layers!) (moves!)))
 (defn tada-timed! [] (do (layers!) (timed-random-moves!)))

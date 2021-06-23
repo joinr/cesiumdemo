@@ -59,6 +59,11 @@
 (defn add-days [date d]
   (-add-days date d))
 
+(defn add-seconds [date s]
+  (let [d (-julian date)
+        newd (js/Cesium.JulianDate.)]
+    (js/Cesium.JulianDate.addSeconds d s newd)
+    newd))
 ;;could protocolize this, but I don't have a use case beyond vectors at the
 ;;moment...
 (defn interval
