@@ -39,6 +39,10 @@
 (defn stop! []
   (set! (.-shouldAnimate shared-clock) false))
 
+(defn set-day! [n]
+  (set! (.-currentTime shared-clock)
+        (add-days (.-startTime shared-clock) n)))
+
 (defn add-jdays [^js/Cesium.JulianDate  from n]
   (let [res (.clone from)
         _   (js/Cesium.JulianDate.addDays res n res)]
@@ -153,7 +157,7 @@
      :name arc
      :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
+                :material  {:solidColor {:color {:rgba  [255, 165, 0, 175]}}}
                 :width 1
                 :clampToGround false}
      :properties {:move-type "equipment"}}))
@@ -167,27 +171,10 @@
       :name arc
       :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
                                                                       (stop  :long) (stop  :lat) 200])}
-                 :material  {:solidColor {:color {:rgba [255, 165, 0, 175]}}}
+                 :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
                  :width 1
                  :clampToGround false}
       :properties {:move-type "pax"}}))
-
-(def dummy-move [0  -78.59   35.08   30000
-                 3  -79.0052 35.1015 1000
-                 22 13.4605  51.0804 1000])
-
-#_
-(def mv (->move [-78.59   35.08   30000]
-                [-79.0052 35.1015 1000]
-                [13.4605  51.0804 1000]
-                +now+
-                3
-                22
-                :id "beavis"
-                :move-types #{:pax :equipment}
-                :from-name "bragg"
-                :to-name   "nc"
-                ))
 
 (defn line->dynamic-line [mv start stop]
   (let [t1     (iso-str  start)
@@ -328,18 +315,16 @@
         total       (+ origin->poe poe->pod)
         tstart      (or tstart (time/add-days +now+ (rand-int 180)))
         mult        (if (> (rand) 0.5) -1 1)
-        move-type   #{:pax} #_(rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
+        move-type   (rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
     (->move [(start :long) (start :lat) 300000]
             [(stop :long) (stop :lat) 100000]
             (util/jitter-xyz [(* mult 2.5) (* mult 2.5) 0] destination)
             tstart
-            origin->poe total :id  (str "beavis" (rand)) :move-types #{:pax :equipment}
+            origin->poe total :id  (str "beavis" (rand)) :move-types move-type
             :from-name from :to-name to)))
 
-(def last-first (atom nil))
 (defn random-movements
   ([n]
-   #_(->czml-packets "moves" (apply concat (repeatedly n random-move)))
    (apply concat  (repeatedly n random-move)))
   ([start n]
    (apply concat (repeatedly n #(random-move :tstart (add-days start (rand-int 180)))))))
@@ -448,7 +433,8 @@
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
   (swap! app-state dissoc :entities)
-  (v/rewind-samples! :flow-plot-view "c-day" 0))
+  (v/rewind-samples! :flow-plot-view "c-day" 0)
+  (set-day! 0))
 
 (defn random-moves! []
   (p/do! (timed-random-moves!)
@@ -465,6 +451,17 @@
    :geocoder false
    :clockViewModel shared-clock})
 
+;;// then you can use: Cesium.Math.toDegrees(currentCartographic.longitude)
+(def bounds {:default   [-125.147327626 24.6163352675 -66.612171376 49.6742238918]
+             :shifted   [-115.85193175578075 23.6163352675 -66.612171376 49.6742238918]
+             :3d-us     {:position [-63215.181346188605 -9528933.76322208 6760084.984842104], :direction [0.007298723988826753 0.8268915851484712 -0.5623140003937158], :up [0.08733080420213787 0.5596533194968705 0.8241125485111495], :right [0.9961526284990382 -0.05512230389581595 -0.06812835201055821]}
+             :3d-us-perspective {:position [-317622.8693122543 -9992858.180467833 4246834.783303648], :direction [0.031052476256112346 0.9868503489240992 -0.15862576255686647], :up [0.0037603323137679672 0.15858582933665222 0.9873380346337804], :right [0.9995106820936202 -0.03125577645796077 0.001213597444119795]}
+             :us        [-129.2	20.2	-62.7	51.1]
+             :us-europe [-125.8	16.7	71.7	55.2]
+             :europe    [-12.6	34.7	53.8	60.3]
+             :us-asia   [88.7	5.3	-67.7	48.5]})
+
+
 (def inset-options
   (merge viewer-options
          {:sceneMode Cesium.SceneMode.COLUMBUS_VIEW
@@ -475,6 +472,7 @@
           :timeline         false
           :navigationHelpButton false
           :sceneModePicker false
+          :mapProjection (js/Cesium.WebMercatorProjection.)
           }))
 
 ;;todo : figure out way to allow online toggle.
@@ -485,13 +483,16 @@
   (let [_ (js/console.log "Starting the cesium-root")]
     (fn []
       [:div.cesiumContainer {:class "fullSize"}
-       [ces/cesium-viewer {:name "cesium" :opts viewer-options}]])))
+       [ces/cesium-viewer {:name "cesium"
+                           :opts viewer-options
+                           :extents (bounds :3d-us)}]])))
 
 (defn cesium-inset []
   (let [_ (js/console.log "Starting the cesium-inset")]
     (fn []
       [:div.cesiumContainer {} #_{:class "fullSize"}
-       [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset}]])))
+       [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset
+                           :extents (bounds :us-europe)}]])))
 
 (defn legend []
   [:div.my-legend {:style {:margin-top "10px"}}

@@ -16,10 +16,48 @@
 (defn ^js/Cesium.Viewer current-view []
   (get-view :current))
 
-(defn set-extents! [x1 y1 x2 y2]
-  (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
-    (set! js/Cesium.Camera.DEFAULT_VIEW_RECTANGLE  extent)
-    (set! js/Cesium.Camera.DEFAULT_VIEW_FACTOR 0)))
+(defn set-extents!
+  ([x1 y1 x2 y2]
+   (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
+     (set! js/Cesium.Camera.DEFAULT_VIEW_RECTANGLE  extent)
+     (set! js/Cesium.Camera.DEFAULT_VIEW_FACTOR 0)))
+  ([camera x1 y1 x2 y2]
+   (let [extent (js/Cesium.Rectangle.fromDegrees x1 y1 x2 y2)]
+     (.setView camera #js{:destination extent}))))
+
+(defn current-position-cart [& {:keys [id] :or {id :current}}]
+  (let [camera (.-camera (get-view id))
+        cart   (.clone (.-positionCartographic camera))]
+    cart))
+
+(defn current-position [& {:keys [id] :or {id :current}}]
+  (let [camera (.-camera (get-view id))
+        cart   (.clone (.-positionCartographic camera))]
+    [(js/Cesium.Math.toDegrees (.-longitude cart))
+     (js/Cesium.Math.toDegrees (.-latitude cart))
+     (.-height cart)]))
+
+(defn current-rectangle [& {:keys [id] :or {id :current}}]
+  (let [v   (get-view id)
+        cam (.-camera v)
+        ellipsoid (.-ellipsoid (.-globe (.-scene v)))
+        result (js/Cesium.Rectangle.)]
+    (.computeViewRectangle cam ellipsoid result)
+    result))
+
+(defn rect-degrees [r]
+  {:west (js/Cesium.Math.toDegrees  (.-west r))
+   :south (js/Cesium.Math.toDegrees (.-south r))
+   :east (js/Cesium.Math.toDegrees  (.-east r))
+   :north (js/Cesium.Math.toDegrees (.-north r))})
+
+(defn set-camera-position! [[lng lat h] & {:keys [id] :or {id :current}}]
+  (let [cam (.-camera (get-view id))]
+    (set! (.-position cam)
+          (js/Cesium.Cartesian3.
+           (js/Cesium.Math.toRadians lng)
+           (js/Cesium.Math.toRadians lat)
+           h))))
 
 ;;var viewer = new Cesium.Viewer('cesiumContainer');
 ;;need to add options....
@@ -29,8 +67,47 @@
 (defn ^js/Cesium.Clock clock [& {:keys [id] :or {id :current}}]
   (-> view deref (get id) .-clock))
 
+(defn cart3->vec [c]
+  [(.-x c) (.-y c) (.-z c)])
+
+(defn vec->cart3 [[x y z]]
+  (js/Cesium.Cartesian3. x y z))
+
+(defn save-camera [& {:keys [id] :or {id :current}}]
+  (let [v (get-view id)
+        cam (.-camera v)]
+    {:position  (cart3->vec (.-position cam))
+     :direction (cart3->vec (.-direction cam))
+     :up        (cart3->vec (.-up cam))
+     :right     (cart3->vec (.-right cam))
+                                        ;:transform (.clone (.-transform cam))
+                                        ;:frustum   (.clone (.-frustum cam))
+     }))
+
+(defn load-camera! [{:keys [position direction up right #_transform #_frustum]}
+                    & {:keys [id] :or {id :current}}]
+  (let [v   (get-view id)
+        cam (.-camera v)
+        [position direction up right]
+        (map vec->cart3 [position direction up right])]
+    (set! (.-position cam) position)
+    (set! (.-direction cam) direction)
+    (set! (.-up cam) up)
+    (set! (.-right cam) right)
+    #_(set! (.-transform cam) transform)
+    #_(set! (.-frustum cam) frustum)))
+
+(defn set-view! [coords & {:keys [id] :or {id :current}}]
+  (cond (map? coords)  (load-camera! coords :id id)
+        (vector? coords)
+          (let [[lat1 lng1 lat2 lng2] coords]
+            (-> (get-view id)
+                (.-camera)
+                (set-extents! lat1 lng1 lat2 lng2)))
+          :else (throw (ex-info "unknown view coordinates..." {:in coords}))))
+
 ;;basic reagent component.
-(defn cesium-viewer [{:keys [name opts id] :or {id :current}}]
+(defn cesium-viewer [{:keys [name opts id extents] :or {id :current}}]
   (let [vw (keyword (str name "-view"))]
     (r/create-class
      {:display-name (str name)
@@ -38,7 +115,11 @@
       :component-did-mount
       (fn [this]
         (let [v (->viewer (r/dom-node this) opts)
-              _ (swap! view assoc id v)]
+              _ (swap! view assoc id v)
+              _ #_(when-let [[x1 y1 x2 y2] extents]
+                    (set-extents! (.-camera v) x1 y1 x2 y2))
+              (when extents
+                (set-view! extents :id id))]
           v))})))
 
 
