@@ -53,7 +53,6 @@
 (def c-time (reagent/atom 0))
 (def c-init (reagent/atom (.-dayNumber (->jd +now+))))
 (def c-day  (reagent/atom 0))
-(def c-offset (reagent/atom 0))
 
 (defn current-day [^js/Cesium.JulianDate curr]
   (- (.-dayNumber curr) @c-init))
