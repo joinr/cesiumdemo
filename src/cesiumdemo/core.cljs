@@ -16,8 +16,10 @@
 
 #_(set! *warn-on-infer* true)
 
-(def default-state {:transit-jitter     [20 20 100000]
-                    :destination-jitter [2.5 2.5 0]})
+(def default-state {:transit-jitter     [2 2 0]
+                    :destination-jitter [2.5 2.5 0]
+                    :home-icons         true
+                    :shared-icons       true})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
@@ -296,22 +298,24 @@
       target
       {:id   bbid
       :name bbid
-      :billboard {:image (ea/patch-path Patch)
-                  :scale 0.25
-                  :pixelOffset {:cartesian2 [0 0]}
-                  :eyeOffset   {:cartesian [0 0 -10000]}}
+       :billboard (when (@app-state :home-icons)
+                    {:image (ea/patch-path Patch)
+                     :scale 0.25
+                     :pixelOffset {:cartesian2 [0 0]}
+                     :eyeOffset   {:cartesian [0 0 -10000]}})
        :position {:reference target-pos}
-      :availability dynavail
-      :properties {:billboard-type "patch" #_#_:shared true :shared-avail sharedavail}}
+       :availability dynavail
+       :properties {:billboard-type "patch" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
-      :billboard {:image (ea/icon-path Icon)
-                  :scale 0.85
-                  :pixelOffset {:cartesian2 [63 0]}
-                  :eyeOffset   {:cartesian [0 0 -10000]}}
+      :billboard (when (@app-state :home-icons)
+                   {:image (ea/icon-path Icon)
+                    :scale 0.85
+                    :pixelOffset {:cartesian2 [63 0]}
+                    :eyeOffset   {:cartesian [0 0 -10000]}})
       :availability dynavail
       :position {:reference target-pos}
-      :properties {:billboard-type "icon" #_#_:shared true :shared-avail sharedavail}}]
+      :properties {:billboard-type "icon" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}]
      (filter identity 
       [(when (move-types  :equipment)
         {:id   (str (gensym "eq") "transit")
@@ -344,11 +348,11 @@
 (defn shrink-icon  [r]
   (if (r :billboard)
     (case (-> r :properties :billboard-type)
-      "icon"  (update-in r [:billboard :scale] * 0.5)
+      "icon"  (update-in r [:billboard :scale] * 0.25)
       "patch" (update r :billboard
                       (fn [{:keys [scale pixelOffset] :as r}]
-                        (assoc r :scale (* 0.5 scale)
-                              :pixelOffset {:cartesian2 [30 0]})))
+                        (assoc r :scale (* 0.25 scale)
+                              :pixelOffset {:cartesian2 [60 0]})))
       r)
     r))
 
@@ -505,7 +509,7 @@
              :shifted   [-115.85193175578075 23.6163352675 -66.612171376 49.6742238918]
              :3d-us     {:position [-63215.181346188605 -9528933.76322208 6760084.984842104], :direction [0.007298723988826753 0.8268915851484712 -0.5623140003937158], :up [0.08733080420213787 0.5596533194968705 0.8241125485111495], :right [0.9961526284990382 -0.05512230389581595 -0.06812835201055821]}
              :3d-us-perspective {:position [-317622.8693122543 -9992858.180467833 4246834.783303648], :direction [0.031052476256112346 0.9868503489240992 -0.15862576255686647], :up [0.0037603323137679672 0.15858582933665222 0.9873380346337804], :right [0.9995106820936202 -0.03125577645796077 0.001213597444119795]}
-             :inset-atlantic {:position [-4579254.4343571365 5217036.849206816 8367344.325461678], :direction [0 0 -1], :up [-2.2204460492503126e-16 1 0], :right [1 2.2204460492503126e-16 0]}
+             :inset-atlantic {:position [-5415797.494191807 4642953.337264422 10653133.091939844], :direction [0 0 -1], :up [-2.2204460492503126e-16 1 0], :right [1 2.2204460492503126e-16 0]}
              :us        [-129.2	20.2	-62.7	51.1]
              :us-europe [-125.8	16.7	71.7	55.2]
              :europe    [-12.6	34.7	53.8	60.3]
@@ -570,6 +574,42 @@
      [:li "Guard/Reserve Origin"]
      [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
 
+
+(defn rendering-options [s v]
+  (merge s
+         (case v
+           :default    default-state
+           :no-transit-icons {:transit-jitter     [2 2 0]
+                              :destination-jitter [2.5 2.5 0]
+                              :home-icons         true
+                              :shared-icons       false}
+           :no-icons       {:transit-jitter     [2 2 0]
+                            :destination-jitter [2.5 2.5 0]
+                            :home-icons         false
+                            :shared-icons       false}
+           :no-jitter    {:transit-jitter     [0 0 0]
+                          :destination-jitter [0 0 0]
+                          :home-icons         true
+                          :shared-icons       true}
+           :no-transit-jitter {:transit-jitter     [0 0 0]
+                               :destination-jitter [2.5 2.5 0]
+                               :home-icons         true
+                               :shared-icons       true}
+           (throw (ex-info "unknown rendering preset!" {:in v})))))
+
+(defn ->drop-down [label id opts]
+  [:div
+   [:p {:style {:font-size "70%"}} label]
+   [:select.cesium-button {:id id :name id :on-change #(swap! app-state rendering-options (keyword (.. % -target -value)))}
+    (for [[k v] opts]
+      [:option {:value (name k)} v])]])
+
+(defn visual-options []
+  (->drop-down "Rendering Options" "renderopts"
+    {:default          :default
+     :no-transit-icons :no-transit-icons
+     :no-icons         :no-icons
+     :no-jitter        :no-jitter}))
 #_
 (defn ->button [id on-click label]
   [:button.cesium-button {:id id :on-click on-click}
@@ -597,6 +637,7 @@
                                     (println "done")
                                     (play!))}
      "demo"]
+    [visual-options]
     [legend]]
    #_[:div.header {:id "inset-root" :style {:position "absolute" :bottom "53%" :right "0%" :width "600px" :height "300px"}}
     [:p {:style {:margin "0 auto"}} "Destination Inset"]
