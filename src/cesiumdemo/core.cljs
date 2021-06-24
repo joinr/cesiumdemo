@@ -16,11 +16,19 @@
 
 #_(set! *warn-on-infer* true)
 
+(def default-state {:transit-jitter     [20 20 100000]
+                    :destination-jitter [2.5 2.5 0]})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
 (defonce app-state
-  (reagent/atom {:loaded false}))
+  (reagent/atom (assoc default-state :loaded false)))
+
+(defn no-jitter! []
+  (swap! app-state dissoc :transit-jitter :destination-jitter))
+
+(defn default-jitter! []
+  (swap! app-state merge default-state))
 
 ;;Date/Time Junk
 ;;We have to convert between js/Date and cesium's julian
@@ -134,6 +142,12 @@
 (defn states! []
   (ces/load-geojson! "ne_10m_us_states.topojson"))
 
+(defn countries! []
+  (ces/load-geojson! "all-countries.geo.json" :id :inset
+                     :style {:stroke Cesium.Color.BLACK
+                             :fill  (js/Cesium.Color.GREY.withAlpha 1.0),
+                             :strokeWidth 3}))
+
 ;;need to define movements.
 ;;So an entity will show up and start moving.
 ;;This also implies a movement path.
@@ -242,10 +256,11 @@
                    (map (fn [t [lng lat h]]
                           [t lng lat h]) [0 dtransit dstop]))
         [f tr t] moves
+        [jx jy jz]  (or (@app-state :transit-jitter) [0 0 0])
         mult  (if (< (rand) 0.5) -1 1)
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
-                   (util/jitter-txyz [(* mult 20) (* mult 20) 100000]))
+                   (util/jitter-txyz [jx jy jz]))
         splined-path (util/spline-degrees 2 [tr mp t])
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path) #_[f tr mp t]]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
@@ -304,9 +319,11 @@
     r))
 
 (def ger [11.430040468408205	49.80008750153199 10000])
+(def nor [0.3138532  49.0677708 10000])
+(def brest [-4.4860088 48.3905283 10000])
 
 (defn random-move [& {:keys [tstart origin->poe poe->pod destination]
-                      :or {destination ger}}]
+                      :or {destination brest}}]
   (let [edge      (rand-nth (keys connections))
         [from to] edge
         {:keys [start stop]} (connections edge)
@@ -315,10 +332,11 @@
         total       (+ origin->poe poe->pod)
         tstart      (or tstart (time/add-days +now+ (rand-int 180)))
         mult        (if (> (rand) 0.5) -1 1)
-        move-type   (rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])]
+        move-type   (rand-nth [#{:pax} #{:equipment} #{:pax :equipment}])
+        [jx jy jz]  (or (@app-state :destination-jitter) [0 0 0])]
     (->move [(start :long) (start :lat) 300000]
             [(stop :long) (stop :lat) 100000]
-            (util/jitter-xyz [(* mult 2.5) (* mult 2.5) 0] destination)
+            (util/jitter-xyz [jx jy jz] destination)
             tstart
             origin->poe total :id  (str "beavis" (rand)) :move-types move-type
             :from-name from :to-name to)))
@@ -332,7 +350,8 @@
 (defn layers! []
   (do (states!)
       (forts!)
-      (ports!)))
+      (ports!)
+      (countries!)))
 
 (defn moves! []
   (ces/load-czml! (random-movements 500)))
@@ -456,6 +475,7 @@
              :shifted   [-115.85193175578075 23.6163352675 -66.612171376 49.6742238918]
              :3d-us     {:position [-63215.181346188605 -9528933.76322208 6760084.984842104], :direction [0.007298723988826753 0.8268915851484712 -0.5623140003937158], :up [0.08733080420213787 0.5596533194968705 0.8241125485111495], :right [0.9961526284990382 -0.05512230389581595 -0.06812835201055821]}
              :3d-us-perspective {:position [-317622.8693122543 -9992858.180467833 4246834.783303648], :direction [0.031052476256112346 0.9868503489240992 -0.15862576255686647], :up [0.0037603323137679672 0.15858582933665222 0.9873380346337804], :right [0.9995106820936202 -0.03125577645796077 0.001213597444119795]}
+             :inset-atlantic {:position [-4579254.4343571365 5217036.849206816 8367344.325461678], :direction [0 0 -1], :up [-2.2204460492503126e-16 1 0], :right [1 2.2204460492503126e-16 0]}
              :us        [-129.2	20.2	-62.7	51.1]
              :us-europe [-125.8	16.7	71.7	55.2]
              :europe    [-12.6	34.7	53.8	60.3]
@@ -492,7 +512,7 @@
     (fn []
       [:div.cesiumContainer {} #_{:class "fullSize"}
        [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset
-                           :extents (bounds :us-europe)}]])))
+                           :extents (bounds :inset-atlantic)}]])))
 
 (defn legend []
   [:div.my-legend {:style {:margin-top "10px"}}
