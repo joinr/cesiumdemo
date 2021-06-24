@@ -81,7 +81,7 @@
 (def area-spec
   (clj->js
    {"$schema" "https://vega.github.io/schema/vega-lite/v5.json",
-    "width" 300, "height" 200,
+    "width" "container", "height" "container",
     "data" #_{"url" "unemployment-across-industries.json"} {"values" dummy-data},
     "mark" "area",
     "encoding" {"x" {"field" "x"} #_{
@@ -141,7 +141,7 @@
                    :tickColor lightColor}}})
 
 (def equipment-spec
-  (-> {:width 300, :height 200,
+  (-> {:width "container" :height 200;;:width 600, :height 200,
        "autosize" {
                    "type" "pad",
                    "resize" true ;;maybe revisit this.
@@ -163,7 +163,17 @@
                                               :range  ["#ffa500"   "#ff0000"]}
                                   :legend  {:direction "horizontal"
                                                :orient "bottom"
-                                            :layout {:bottom {:anchor "middle"}}}}}}
+                                            :layout {:bottom {:anchor "middle"}}}}}
+       #_#_:signals [
+                   { 
+                    :name "width", 
+                    :value 0,
+                    :on [{ 
+                             :event { :source "window", :type "resize" }, 
+                             :update "containerSize()[0]" 
+                             } ]
+                    }
+                   ]}
       (merge dark-theme)
       clj->js))
 

@@ -509,6 +509,7 @@
              :shifted   [-115.85193175578075 23.6163352675 -66.612171376 49.6742238918]
              :3d-us     {:position [-63215.181346188605 -9528933.76322208 6760084.984842104], :direction [0.007298723988826753 0.8268915851484712 -0.5623140003937158], :up [0.08733080420213787 0.5596533194968705 0.8241125485111495], :right [0.9961526284990382 -0.05512230389581595 -0.06812835201055821]}
              :3d-us-perspective {:position [-317622.8693122543 -9992858.180467833 4246834.783303648], :direction [0.031052476256112346 0.9868503489240992 -0.15862576255686647], :up [0.0037603323137679672 0.15858582933665222 0.9873380346337804], :right [0.9995106820936202 -0.03125577645796077 0.001213597444119795]}
+             :3d-us-small {:position [-762505.075345366 -8709290.1490951 4043268.4155746778], :direction [0.09961461776873652 0.9857124352588807 -0.13582313095638476], :up [0.05184249751899356 0.1311751752861519 0.9900027418344055], :right [0.9936746365776786 -0.10566015504746376 -0.038034829532472586]}
              :inset-atlantic {:position [-5415797.494191807 4642953.337264422 10653133.091939844], :direction [0 0 -1], :up [-2.2204460492503126e-16 1 0], :right [1 2.2204460492503126e-16 0]}
              :us        [-129.2	20.2	-62.7	51.1]
              :us-europe [-125.8	16.7	71.7	55.2]
@@ -541,18 +542,20 @@
 (def online-options
   {:skyBox false})
 
-(defn cesium-root []
-  (let [_ (js/console.log "Starting the cesium-root")]
-    (fn []
-      [:div.cesiumContainer {:class "fullSize"}
-       [ces/cesium-viewer {:name "cesium"
-                           :opts viewer-options
-                           :extents (bounds :3d-us)}]])))
+(defn cesium-root
+  ([opts]
+   (let [_ (js/console.log "Starting the cesium-root")]
+     (fn []
+       [:div.cesiumContainer opts
+        [ces/cesium-viewer {:name "cesium"
+                            :opts viewer-options
+                            :extents (bounds :3d-us)}]])))
+  ([] (cesium-root {:class "fullSize"})))
 
 (defn cesium-inset []
   (let [_ (js/console.log "Starting the cesium-inset")]
     (fn []
-      [:div.cesiumContainer {} #_{:class "fullSize"}
+      [:div.cesiumContainer {}
        [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset
                            :extents (bounds :inset-atlantic)}]])))
 
@@ -573,6 +576,27 @@
      [:img {:src "icons/origin-ac.png" :width "32" :height "32"}]
      [:li "Guard/Reserve Origin"]
      [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
+
+(defn ->entry [label image]
+  [:div
+   [:li #_{:style {:display "inline-block"}} label]
+   [:img {#_#_:style {:display "inline-block"} :src image :width "32" :height "32"}]])
+
+(defn flex-legend []
+  [:div #_{:style {:margin-top "10px" }}
+   [:div #_.legend-title "Legend"]
+   [:div #_.legend-scale
+    [:ul {:style {:display "flex"
+                  :flex-flow "row wrap"
+                  :justify-content "space-around"}}
+     (->> ["PAX Movement" "icons/pax-move.png"
+           "Equipment Movement" "icons/eq-move.png"
+           "POE"  "icons/poe.png"
+           "APOE"  "icons/apoe.png"
+           "Active Origin"  "icons/origin-ac.png"
+           "Guard/Reserve Origin"  "icons/origin-rc.png"]
+          (partition 2)
+          (map (fn [[l i]] (->entry l i))))]]])
 
 
 (defn rendering-options [s v]
@@ -615,7 +639,7 @@
   [:button.cesium-button {:id id :on-click on-click}
    label])
 
-(defn page [ratom]
+(defn original-page [ratom]
   [:div
    [cesium-root]
    [:div {:id "c-day" :class "header" :style {:position "absolute" :top "0px" :left "45%" :font-size "xx-large"}}
@@ -649,6 +673,46 @@
     [cesium-inset]]
    [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%"}}
     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
+
+(defn page [ratom]
+  [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
+    [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "1"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "1"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click
+                            #(p/do! (println "loading moves")
+                                    (random-moves!)
+                                    (println "done")
+                                    (println "loading-images")
+                                    (when-not (@app-state :loaded)(p/delay 2000))
+                                    (swap! app-state assoc :loaded true)
+                                    (println "done")
+                                    (play!))}
+      "demo"]
+    [visual-options]]
+   [:div  {:style {:display "flex" :width "100%" :height  "auto" #_"100%" :class "fullSize" :overflow "hidden"}}
+    [:div {:style {:flex "0.60" :max-width "60%" :width "60%"}}
+     [cesium-root]]
+    [:div {:style #_{:position "absolute" :left"70%" :width "30%" :top "50%"} {:flex "0.35" :width "25%"}}
+     [:div {:id "c-day" :class "header" :style {#_#_#_#_#_#_:position "absolute" :top "0px" :left "45%" :font-size "xxx-large"}}
+      [:p {:style {:margin "0 auto"}}
+       "C-Day: " @c-day]]
+     [cesium-inset]]]
+
+   [:div.header {:id "chart-root" :style {;:display "flex" ;"inline-block"
+                                          :height  "auto" #_"100%" :width "100%"} #_{:position "absolute" :bottom "48%"  :right "0%"}}
+    [:div {:width "100%" :height  "auto" #_"100%"}
+     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]]
+   [:div #_{:style {:display "flex"}}
+    [flex-legend]]])
+
+
 
 
 
