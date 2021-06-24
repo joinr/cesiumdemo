@@ -115,6 +115,8 @@
       :component-did-mount
       (fn [this]
         (let [v (->viewer (r/dom-node this) opts)
+              _ (when-let [rscale (opts :resolutionScale)]
+                  (set! (.-resolutionScale v) rscale))
               _ (swap! view assoc id v)
               _ #_(when-let [[x1 y1 x2 y2] extents]
                     (set-extents! (.-camera v) x1 y1 x2 y2))

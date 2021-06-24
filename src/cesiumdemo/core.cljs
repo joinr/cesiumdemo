@@ -27,6 +27,9 @@
 (defn no-jitter! []
   (swap! app-state dissoc :transit-jitter :destination-jitter))
 
+(defn no-transit-jitter! []
+  (swap! app-state dissoc :transit-jitter))
+
 (defn default-jitter! []
   (swap! app-state merge default-state))
 
@@ -110,7 +113,9 @@
 (def colors {"Army Active"  [0   0   0   255]
              "Army Guard"   [192 192 192 255]
              "Army Reserve" [192 192 192 255]
-             "AF Active"    [0   0   0   255]})
+             "AF Active"    [0   0   0   255]
+             :pax           [255 0 0 125]
+             :equipment     [255, 165, 0, 125] })
 
 (defn ->czml-origin [{:keys [lat long sitename component] :as m}]
   {:id   sitename
@@ -171,9 +176,10 @@
      :name arc
      :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba  [255, 165, 0, 175]}}}
+                :material  {:solidColor {:color {:rgba  (colors :equipment)}}}
                 :width 1
-                :clampToGround false}
+                :clampToGround false
+                :arcType "NONE" #_js/Cesium.ArcType.NONE}
      :properties {:move-type "equipment"}}))
 
 (defn pax-movement
@@ -185,9 +191,10 @@
       :name arc
       :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
                                                                       (stop  :long) (stop  :lat) 200])}
-                 :material  {:solidColor {:color {:rgba [255 0 0 175]}}}
+                 :material  {:solidColor {:color {:rgba (colors :pax)}}}
                  :width 1
-                 :clampToGround false}
+                 :clampToGround false
+                 :arcType  "NONE" #_js/Cesium.ArcType.NONE}
       :properties {:move-type "pax"}}))
 
 (defn line->dynamic-line [mv start stop]
@@ -278,7 +285,7 @@
                 :name to-id
                 :availability allavail
                 :position   {:cartographicDegrees moves
-                             :interpolationAlgorithm "LAGRANGE"}
+                             #_#_:interpolationAlgorithm "LAGRANGE"}
                 :properties {:move-type "target" :shared true}}
         from-pos   (str from-id "#position")
         target-pos (str to-id "#position")]
@@ -295,7 +302,7 @@
                   :eyeOffset   {:cartesian [0 0 -10000]}}
        :position {:reference target-pos}
       :availability dynavail
-      :properties {:billboard-type "patch" :shared true :shared-avail sharedavail}}
+      :properties {:billboard-type "patch" #_#_:shared true :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
       :billboard {:image (ea/icon-path Icon)
@@ -304,7 +311,34 @@
                   :eyeOffset   {:cartesian [0 0 -10000]}}
       :availability dynavail
       :position {:reference target-pos}
-      :properties {:billboard-type "icon" :shared true :shared-avail sharedavail}}]
+      :properties {:billboard-type "icon" #_#_:shared true :shared-avail sharedavail}}]
+     (filter identity 
+      [(when (move-types  :equipment)
+        {:id   (str (gensym "eq") "transit")
+         :name "equip transit"
+         :path {:material  {:polylineOutline {:color        {:rgba (assoc (colors :equipment) 3 20)},
+                                              :outlineColor {:rgba (assoc (colors :equipment) 3 20)}
+                                              :outlineWidth 1
+                                              }}
+                :width    1,
+                :leadTime 0
+                :resolution (* czml/+day-seconds+ 10)}
+         :availability sharedavail
+         :position {:reference target-pos}
+         :properties {:transit-path true :shared true :shared-avail sharedavail}})
+      (when (move-types  :pax)
+        {:id   (str (gensym "pax") "transit")
+         :name "pax transit"
+         :path {:material  {:polylineOutline {:color        {:rgba (assoc (colors :pax) 3 20)},
+                                              :outlineColor {:rgba (assoc (colors :pax) 3 20)}
+                                              :outlineWidth 1
+                                              }}
+                :width    1,
+                :leadTime 0
+                :resolution (* czml/+day-seconds+ 10)}
+         :availability sharedavail
+         :position {:reference target-pos}
+         :properties {:transit-path true :shared true :shared-avail sharedavail}})])
      )))
 
 (defn shrink-icon  [r]
@@ -358,6 +392,8 @@
 
 (defn timed-random-moves! []
   (let [rands  (random-movements +now+ 500)
+        pres   (filter (fn [r]
+                         (not (some-> r :properties :transit-path))) rands)
         shared (->> rands
                     (filter (fn [r] (or (some-> r :properties :shared)
                                         (= (r :id) "document"))))
@@ -366,7 +402,7 @@
                     (map shrink-icon))]
     ;;reverse order to ensure we don't skip time!
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
-           (ces/load-czml! (->czml-packets "moves" rands) :id :current)
+           (ces/load-czml! (->czml-packets "moves" pres #_rands) :id :current)
            :done)))
 
 (defn tada!       [] (do (layers!) (moves!)))
@@ -463,12 +499,6 @@
 ;;UI / Page
 ;;=========
 
-(def viewer-options
-  {:skyBox false
-   :baseLayerPicker false
-   :imageryProvider (-> local-layers :blue-marble)
-   :geocoder false
-   :clockViewModel shared-clock})
 
 ;;// then you can use: Cesium.Math.toDegrees(currentCartographic.longitude)
 (def bounds {:default   [-125.147327626 24.6163352675 -66.612171376 49.6742238918]
@@ -481,6 +511,13 @@
              :europe    [-12.6	34.7	53.8	60.3]
              :us-asia   [88.7	5.3	-67.7	48.5]})
 
+(def viewer-options
+  {:skyBox false
+   :baseLayerPicker false
+   :imageryProvider (-> local-layers :blue-marble)
+   :geocoder false
+   :resolutionScale 1.0
+   :clockViewModel shared-clock})
 
 (def inset-options
   (merge viewer-options
@@ -493,6 +530,7 @@
           :navigationHelpButton false
           :sceneModePicker false
           :mapProjection (js/Cesium.WebMercatorProjection.)
+          :resolutionScale 1.0
           }))
 
 ;;todo : figure out way to allow online toggle.
