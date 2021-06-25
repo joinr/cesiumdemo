@@ -147,7 +147,8 @@
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"
                    }
-       :title "Total Equipment and Pax Moves By C-Day"
+       :title {:text "Total Equipment and Pax Moves By C-Day"
+               :fontSize 22}
 ;       :background "rgba(42, 42, 42, 0.8)"
        :data
         {:name "table"

@@ -19,7 +19,8 @@
 (def default-state {:transit-jitter     [2 2 0]
                     :destination-jitter [2.5 2.5 0]
                     :home-icons         true
-                    :shared-icons       true})
+                    :shared-icons       true
+                    :layout             :stacked})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
@@ -302,7 +303,8 @@
                     {:image (ea/patch-path Patch)
                      :scale 0.25
                      :pixelOffset {:cartesian2 [0 0]}
-                     :eyeOffset   {:cartesian [0 0 -10000]}})
+                     :eyeOffset   {:cartesian [0 0 -10000]}
+                     :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
        :position {:reference target-pos}
        :availability dynavail
        :properties {:billboard-type "patch" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}
@@ -312,7 +314,8 @@
                    {:image (ea/icon-path Icon)
                     :scale 0.85
                     :pixelOffset {:cartesian2 [63 0]}
-                    :eyeOffset   {:cartesian [0 0 -10000]}})
+                    :eyeOffset   {:cartesian [0 0 -10000]}
+                    :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
       :availability dynavail
       :position {:reference target-pos}
       :properties {:billboard-type "icon" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}]
@@ -420,7 +423,7 @@
   (-> id ces/get-view .-imageryLayers))
 
 (defn layer-names [& {:keys [id] :or {id :current}}]
-  (for [^js/Cesium.DataSource v (-> id ces/get-view .-dataSources .-_dataSources)]
+  (for [^js/Cesium.DataSource v (some-> id ces/get-view .-dataSources .-_dataSources)]
     (.-name v)))
 
 (defn ^js/Cesium.EntityCollection
@@ -578,6 +581,7 @@
      [:img {:src "icons/origin-rc.png" :width "32" :height "32"}]]]])
 
 (defn ->entry [label image]
+  ^{:key label}
   [:div
    [:li #_{:style {:display "inline-block"}} label]
    [:img {#_#_:style {:display "inline-block"} :src image :width "32" :height "32"}]])
@@ -621,25 +625,28 @@
                                :shared-icons       true}
            (throw (ex-info "unknown rendering preset!" {:in v})))))
 
-(defn ->drop-down [label id opts]
+(defn ->drop-down [label id opts & {:keys [on-change]}]
   [:div
    [:p {:style {:font-size "70%"}} label]
-   [:select.cesium-button {:id id :name id :on-change #(swap! app-state rendering-options (keyword (.. % -target -value)))}
+   [:select.cesium-button {:id id :name id :on-change #(on-change (keyword (.. % -target -value)))}
     (for [[k v] opts]
-      [:option {:value (name k)} v])]])
+      ^{:key k} [:option {:value (name k)} v])]])
 
 (defn visual-options []
   (->drop-down "Rendering Options" "renderopts"
     {:default          :default
      :no-transit-icons :no-transit-icons
      :no-icons         :no-icons
-     :no-jitter        :no-jitter}))
-#_
-(defn ->button [id on-click label]
-  [:button.cesium-button {:id id :on-click on-click}
-   label])
+     :no-jitter        :no-jitter}
+    :on-change #(swap! app-state rendering-options %)))
 
-(defn original-page [ratom]
+(defn layout-options []
+  (->drop-down "Page Layout" "pagelayout"
+    {:stacked :stacked
+     :overlay :overlay}
+    :on-change #(swap! app-state assoc :layout % :layout-changed true)))
+
+(defn overlay-page [ratom]
   [:div
    [cesium-root]
    [:div {:id "c-day" :class "header" :style {:position "absolute" :top "0px" :left "45%" :font-size "xx-large"}}
@@ -647,6 +654,10 @@
      "C-Day: " @c-day]]
    [:div.controlPanel
     [:div
+     [:button.cesium-button {:style {:display "block"} :id "play" :type "button" :on-click #(play!)}
+      "play"]
+     [:button.cesium-button {:style {:display "block"} :id "stop" :type "button" :on-click #(stop!)}
+      "stop"]
      [:button.cesium-button {:style {:display "block"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
       "clear-moves"]
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
@@ -662,19 +673,15 @@
                                     (play!))}
      "demo"]
     [visual-options]
+    [layout-options]
     [legend]]
-   #_[:div.header {:id "inset-root" :style {:position "absolute" :bottom "53%" :right "0%" :width "600px" :height "300px"}}
-    [:p {:style {:margin "0 auto"}} "Destination Inset"]
-    [cesium-inset]]
-   #_[:div.header {:id "chart-root" :style {:position "absolute" :top "50%" :right "0%"}}
-    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]
    [:div.header {:id "inset-root" :style {:position "absolute" :top "55%"    :right "0%" :width "500px" :height "250px"}}
     [:p {:style {:margin "0 auto"}} "Destination Inset"]
     [cesium-inset]]
-   [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%"}}
-    [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]])
+   [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%" :width "300px" :height "200px"}}
+    [v/vega-chart "flow-plot" v/equipment-spec]]])
 
-(defn page [ratom]
+(defn stacked-page [ratom]
   [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
@@ -694,14 +701,16 @@
                                     (swap! app-state assoc :loaded true)
                                     (println "done")
                                     (play!))}
-      "demo"]
-    [visual-options]]
-   [:div  {:style {:display "flex" :width "100%" :height  "auto" #_"100%" :class "fullSize" :overflow "hidden"}}
-    [:div {:style {:flex "0.60" :max-width "60%" :width "60%"}}
+     "demo"]
+    [visual-options]
+    [layout-options]]
+   [:div  {:style {:display "flex" :width "100%" :height  "auto" #_"100%" :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"}}
+    [:div {:style {:flex "0.60" :max-width "60%"}}
      [cesium-root]]
-    [:div {:style #_{:position "absolute" :left"70%" :width "30%" :top "50%"} {:flex "0.35" :width "25%"}}
-     [:div {:id "c-day" :class "header" :style {#_#_#_#_#_#_:position "absolute" :top "0px" :left "45%" :font-size "xxx-large"}}
-      [:p {:style {:margin "0 auto"}}
+    [:div {:style  {:flex "0.40" :max-width "40%"}}
+     [:div {:id "c-day" :class "header" :style {:font-size "xxx-large"}}
+      [:p {:style {:margin "0 auto" :text-align "center" }}
        "C-Day: " @c-day]]
      [cesium-inset]]]
 
@@ -712,8 +721,20 @@
    [:div #_{:style {:display "flex"}}
     [flex-legend]]])
 
+(defn ensure-layers! [obj]
+  (let [res obj
+        _   (when (@app-state :layout-changed)
+              (swap! app-state dissoc :entities :layout-changed))
+        _   (when (empty? (layer-names))
+              (p/future (layers!)))]
+    res))
 
-
+(defn page [ratom]
+  (let [layout (@ratom :layout)]
+    (case layout
+      :overlay (ensure-layers! (overlay-page ratom))
+      :stacked (ensure-layers! (stacked-page ratom))
+        [:p (str "unknown layout!" layout)])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -725,7 +746,7 @@
     (println "dev mode")))
 
 (defn reload []
-  (swap! app-state dissoc :entities)
+  (reset! app-state default-state)
   (reagent/render [page app-state]
                   (.getElementById js/document "app")))
 
