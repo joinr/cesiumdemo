@@ -20,7 +20,9 @@
                     :destination-jitter [2.5 2.5 0]
                     :home-icons         true
                     :shared-icons       true
-                    :layout             :stacked})
+                    :layout             :stacked
+                    :random-move-count  500
+                    :random-move-length 180})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
@@ -386,7 +388,10 @@
   ([n]
    (apply concat  (repeatedly n random-move)))
   ([start n]
-   (apply concat (repeatedly n #(random-move :tstart (add-days start (rand-int 180)))))))
+   (apply concat
+    (repeatedly n
+       #(random-move :tstart
+          (add-days start (rand-int (get @app-state :random-move-length 180))))))))
 
 (defn layers! []
   (do (states!)
@@ -398,7 +403,7 @@
   (ces/load-czml! (random-movements 500)))
 
 (defn timed-random-moves! []
-  (let [rands  (random-movements +now+ 500)
+  (let [rands  (random-movements +now+ (get @app-state :random-move-count 500))
         pres   (filter (fn [r]
                          (not (some-> r :properties :transit-path))) rands)
         shared (->> rands

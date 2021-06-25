@@ -140,6 +140,35 @@
                    :gridColor medColor,
                    :tickColor lightColor}}})
 
+
+(def line-equipment-spec
+  (-> {:width "container" :height 100;;:width 600, :height 200,
+       "autosize" {
+                   "type" "pad",
+                   "resize" true ;;maybe revisit this.
+                   "contains" "padding"
+                   }
+       :title {:text "Cumulative % Equipment and Pax Closures By C-Day"
+               :fontSize 22}
+       :data
+        {:name "table"},
+       :mark "area",
+       :encoding  {:x  {:field "c-day" :type "quantitative"
+                        :axis {:title "C-Day"
+                               :titleFontSize 22}},
+                   :y  {:field "value"
+                        :axis {:title "% Moves Closed"
+                               :titleFontSize 22}},
+                   :color  {:field "trend",
+                            :type "nominal"
+                            :scale  {:domain ["equipment" "pax"]
+                                     :range  ["#ffa500"   "#ff0000"]}
+                            :legend  {:direction "horizontal"
+                                      :orient "bottom"
+                                      :layout {:bottom {:anchor "middle"}}}}}}
+      (merge dark-theme)
+      clj->js))
+
 (def equipment-spec
   (-> {:width "container" :height 100;;:width 600, :height 200,
        "autosize" {
@@ -163,22 +192,11 @@
                                :titleFontSize 22}},
                    :color  {:field "trend",
                             :type "nominal"
-                            :scale  {;:scheme "category20b"
-                                     :domain ["equipment" "pax"]
+                            :scale  {:domain ["equipment" "pax"]
                                      :range  ["#ffa500"   "#ff0000"]}
                             :legend  {:direction "horizontal"
                                       :orient "bottom"
-                                      :layout {:bottom {:anchor "middle"}}}}}
-       #_#_:signals [
-                   { 
-                    :name "width", 
-                    :value 0,
-                    :on [{ 
-                             :event { :source "window", :type "resize" }, 
-                             :update "containerSize()[0]" 
-                             } ]
-                    }
-                   ]}
+                                      :layout {:bottom {:anchor "middle"}}}}}}
       (merge dark-theme)
       clj->js))
 
