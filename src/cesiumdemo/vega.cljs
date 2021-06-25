@@ -81,7 +81,7 @@
 (def area-spec
   (clj->js
    {"$schema" "https://vega.github.io/schema/vega-lite/v5.json",
-    "width" "container", "height" "container",
+    "width" "container", "height" 300,
     "data" #_{"url" "unemployment-across-industries.json"} {"values" dummy-data},
     "mark" "area",
     "encoding" {"x" {"field" "x"} #_{
@@ -141,7 +141,7 @@
                    :tickColor lightColor}}})
 
 (def equipment-spec
-  (-> {:width "container" :height 200;;:width 600, :height 200,
+  (-> {:width "container" :height 100;;:width 600, :height 200,
        "autosize" {
                    "type" "pad",
                    "resize" true ;;maybe revisit this.
@@ -155,16 +155,20 @@
             #_ #_:values  [ {:c-day 0, :quantity 0, :trend "pax"}
                           {:c-day 0, :quantity 0, :trend "equipment"}]},
        :mark "area",
-       :encoding  {:x  {:field "c-day" :type "quantitative"},
-                      :y  {:field "value", :aggregate "sum"},
-                      :color  {:field "trend",
-                                  :type "nominal"
-                                  :scale  {;:scheme "category20b"
-                                              :domain ["equipment" "pax"]
-                                              :range  ["#ffa500"   "#ff0000"]}
-                                  :legend  {:direction "horizontal"
-                                               :orient "bottom"
-                                            :layout {:bottom {:anchor "middle"}}}}}
+       :encoding  {:x  {:field "c-day" :type "quantitative"
+                        :axis {:title "C-Day"
+                               :titleFontSize 22}},
+                   :y  {:field "value", :aggregate "sum"
+                        :axis {:title "Value"
+                               :titleFontSize 22}},
+                   :color  {:field "trend",
+                            :type "nominal"
+                            :scale  {;:scheme "category20b"
+                                     :domain ["equipment" "pax"]
+                                     :range  ["#ffa500"   "#ff0000"]}
+                            :legend  {:direction "horizontal"
+                                      :orient "bottom"
+                                      :layout {:bottom {:anchor "middle"}}}}}
        #_#_:signals [
                    { 
                     :name "width", 

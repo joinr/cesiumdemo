@@ -643,7 +643,8 @@
 (defn layout-options []
   (->drop-down "Page Layout" "pagelayout"
     {:stacked :stacked
-     :overlay :overlay}
+     :overlay :overlay
+     :tightly-stacked :tightly-stacked}
     :on-change #(swap! app-state assoc :layout % :layout-changed true)))
 
 (defn overlay-page [ratom]
@@ -683,6 +684,26 @@
 
 (defn stacked-page [ratom]
   [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
+   [:div.header  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"
+                   :font-size "xxx-large"}}
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+      "Origin"]
+     [:p {:id "c-day" :style {:margin "0 auto" :text-align "center" }}
+      "C-Day: " @c-day]
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+     "Transit"]]
+   [:div  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"}}
+    [:div {:style {:flex "0.50" :max-width "50%"}}
+     [cesium-root]]
+    [:div {:style  {:flex "0.50" :max-width "50%"}}
+     [cesium-inset]]]
+   [:div.header {:id "chart-root" :style {;:display "flex" ;"inline-block"
+                                          :height  "auto" #_"100%" :width "100%"} #_{:position "absolute" :bottom "48%"  :right "0%"}}
+    [:div {:width "100%" :height  "auto" #_"100%"}
+     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]]
+   [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
      "play"]
@@ -703,23 +724,41 @@
                                     (play!))}
      "demo"]
     [visual-options]
-    [layout-options]]
-   [:div  {:style {:display "flex" :width "100%" :height  "auto" #_"100%" :class "fullSize" :overflow "hidden"
-                   :justify-content "space-between"}}
-    [:div {:style {:flex "0.60" :max-width "60%"}}
-     [cesium-root]]
-    [:div {:style  {:flex "0.40" :max-width "40%"}}
-     [:div {:id "c-day" :class "header" :style {:font-size "xxx-large"}}
-      [:p {:style {:margin "0 auto" :text-align "center" }}
-       "C-Day: " @c-day]]
-     [cesium-inset]]]
+    [layout-options]]])
 
-   [:div.header {:id "chart-root" :style {;:display "flex" ;"inline-block"
-                                          :height  "auto" #_"100%" :width "100%"} #_{:position "absolute" :bottom "48%"  :right "0%"}}
-    [:div {:width "100%" :height  "auto" #_"100%"}
-     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]]
-   [:div #_{:style {:display "flex"}}
-    [flex-legend]]])
+(defn tightly-stacked-page [ratom]
+  [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
+   [:div {:id "c-day" :class "header" :style {:font-size "xx-large"}}
+    [:p {:style {:margin "0 auto" :text-align "center" }}
+     "C-Day: " @c-day]]
+   [:div {:style {:flex 1  :width "100%" :align-self "center"}}
+     [cesium-root]]
+   [:div {:style  {:flex 1 :width "100%" :align-self "center"}}
+    [cesium-inset]]
+   [:div {:id "chart-root" :style {:height "auto"   #_"auto" #_"100%" :min-width "100%"}}
+    [v/vega-chart "flow-plot" v/equipment-spec]]
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"
+                                   :flex-flow "row wrap"}}
+    [:button.cesium-button {:style {:flex "0.5"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "0.5"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "0.5"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "0.5"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "0.5"} :id "demo" :type "button" :on-click
+                            #(p/do! (println "loading moves")
+                                    (random-moves!)
+                                    (println "done")
+                                    (println "loading-images")
+                                    (when-not (@app-state :loaded)(p/delay 2000))
+                                    (swap! app-state assoc :loaded true)
+                                    (println "done")
+                                    (play!))}
+     "demo"]
+    [visual-options]
+    [layout-options]]])
 
 (defn ensure-layers! [obj]
   (let [res obj
@@ -734,6 +773,7 @@
     (case layout
       :overlay (ensure-layers! (overlay-page ratom))
       :stacked (ensure-layers! (stacked-page ratom))
+      :tightly-stacked (ensure-layers! (tightly-stacked-page ratom))
         [:p (str "unknown layout!" layout)])))
 
 
