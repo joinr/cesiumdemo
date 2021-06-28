@@ -48,7 +48,8 @@
 
 (def +now+ (new js/Date))
 
-(def shared-clock (js/Cesium.ClockViewModel.))
+(def shared-clock
+  (js/Cesium.ClockViewModel.))
 
 (defn play! []
   (set! (.-shouldAnimate shared-clock) true))
@@ -520,8 +521,13 @@
   (p/do! (timed-random-moves!)
          (derive-movement-stats!)))
 
+(defn set-finish! [n]
+  (set! (.-stopTime shared-clock) (time/-julian (add-days +now+ n)))
+  (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED))
+
 (defn timed-entity-moves! [emoves]
   (let [moves  (mapcat entity-move emoves)
+        tmax   (reduce max (map :cstop emoves))
         pres   (filter (fn [r]
                          (not (some-> r :properties :transit-path))) moves)
         shared (->> moves
@@ -533,6 +539,7 @@
     ;;reverse order to ensure we don't skip time!
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
            (ces/load-czml! (->czml-packets "moves" pres  ) :id :current)
+           (set-finish! tmax)
            :done)))
 
 (defn load-moves! [moves]
