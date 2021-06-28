@@ -7,7 +7,9 @@
             [cesiumdemo.parser :as parse]
             [cljs-http.client :as http]
             [cljs.core.async :refer [<!]]
-            [cesiumdemo.entityatlas :as ea])
+            [cesiumdemo.entityatlas :as ea]
+            [cesiumdemo.util :as u]
+            [helins.interval.map :as imap])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def ^:dynamic *offset* 10)
@@ -73,6 +75,8 @@
        (mapcat (juxt :tstart :RDD :CRD))
        bounds))
 
+;;We can supply patches and icons via the data with extra fields. Origin, etc.
+;;should already be taken care of.
 (defn add-info [{:keys [UIC PATCH ICON] :as e}]
   (if (and PATCH ICON)
       e
@@ -137,17 +141,21 @@
   (let [start  (geo->lat-long ORIG_GEO)
         middle (geo->lat-long POE_GEO)
         dest   (geo->lat-long POD_GEO)
-        origin->poe (- ALD 10)]
+        origin->poe (- ALD 10)
+        dstop    (- RDD tstart)
+        dtransit (- ALD tstart)]
     {:id       uic
      :start    [(start  :long) (start  :lat)  300000]
      :transit  [(middle :long) (middle :lat)  100000]
      :dest     [(dest   :long) (dest   :lat)  10000]
      :cstart   tstart
-     :ctransit (- ALD tstart)
-     :cstop    (- RDD tstart)
+     :ctransit (+ tstart dtransit)
+     :cstop    (+ tstart dstop)
+     :dtransit dtransit
+     :dstop    dstop
      :delay    (- RDD CRD)
      :pax         PAX
-     :total-stons TOTAL_STONS}))
+     :stons TOTAL_STONS}))
 
 (defn entity->visual-moves [{:keys [UIC SRC COMPO PATCH ICON moves]}]
   (for [[i m] (map-indexed vector moves)]
@@ -163,3 +171,126 @@
 
 
 ;;we now want to analyze the moves....
+;;primary analytic outputs:
+;;a series of time, %cumulative equipment, %cumulative pax closures.
+;;a series of time, %Late To Need
+;;need total pax, total stons
+(defn closures [moves]
+  (let [tmin (atom 0)
+        [ptot etot] (reduce (fn [[p e] {:keys [cstart pax stons]}]
+                              (swap! tmin min cstart)
+                              [(+ p pax) (+ e stons)]) [0 0] moves)]
+    {:ptotal ptot
+     :etotal etot
+     :data  (vec (concat [[@tmin 0 0]]
+                   (for [xs (->> moves
+                                 (sort-by :cstop)
+                                 (partition-by :cstop))]
+                     (let [t       (:cstop (first xs))
+                           [tp te] (reduce (fn [[p e] {:keys [pax stons]}]
+                                             [(+ p pax) (+ e stons)])
+                                           [0 0] xs)]
+                       [t tp te]))))}))
+
+(defn cumulative-closures [xs]
+  (let [{:keys [ptotal etotal data]} (closures xs)
+        p+     (fn [l r] (u/precision (+ l r) 4))
+        accum (let [pacc (atom 0)
+                    eacc (atom 0)]
+                (fn [[t p e]]
+                   [t (swap! pacc p+ p) (swap! eacc p+ e)]))]
+    (->> data
+         (map (fn [[t p e]]
+                [t (/ p ptotal) (/ e etotal)]))
+         (mapv accum)
+         (hash-map :ptotal ptotal
+                   :etotal etotal
+                   :data))))
+
+(defn ->samples [xs]
+  (let [final (last xs)]
+    (->> (partition 2 1 xs)
+         (reduce (fn [acc [l r]]
+                   (imap/mark acc (first l) (dec (first r)) l))
+                 (imap/mark imap/empty (first final) (first final) final)))))
+
+(defn intersect [sm t]
+  (some-> sm
+          (rsubseq <= t)
+          first
+          val))
+
+(defn extents [sm]
+  (let [ks (keys sm)]
+    [(ffirst ks) (second (last ks))]))
+
+(defn simple-agg
+  [vs]
+  (let [v (first vs)]
+    (fn [t]
+      (assoc v 0 t))))
+
+(defn expand-samples
+  ([agg-func s]
+   (apply concat
+          (for [[[from to] vs] (seq s)]
+            (let [f (agg-func vs)]
+              (map f (range from (inc to)))))))
+  ([s] (expand-samples simple-agg s)))
+
+;;provides a map we can lookup to get daily-stats.
+
+;;(def res (make-remote-call "rawmoves.txt"))
+;;(def mvs (-> @res read-visual-moves))
+;;(def cs (-> mvs cumulative-closures))
+;;(def ctrends (cumulative-closure-trends cs))
+(defn cumulative-closure-trends [emoves]
+  (let [{:keys [etotal ptotal data]} (cumulative-closures emoves)
+        samples  (->samples data)
+        trends   (->> samples expand-samples
+                     (reduce (fn [acc [t e p]]
+                               (assoc acc t #js[#js{:c-day t :trend "pax" :value p}
+                                                #js{:c-day t :trend "equipment" :value p}])) {}))]
+    {:extents (extents samples) :etotal etotal :ptotal ptotal :trends trends}))
+
+;;this can be dumped into app-state.
+
+;;we also want late-to-need over time.
+;;from visual move records, we can infer the necessary information.
+;;Group moves by uic (already done when we read entities).
+;;If any piece of that entity is LTN, uic is ltn.
+;;simplest is to just filter entity moves by positive delay,
+;;group-by uic, since delays will be assumably a subset.
+
+(defn cumulative-ltn-trends [emoves]
+  (let [total-units (->> emoves (map :id)  distinct count)
+        late-units (->> emoves
+                        (filter (comp pos? :delay))
+                        (group-by :id))
+        total-late (count late-units)
+        unit-finals (for [[uic moves] late-units]
+                      (let [{:keys [cstop delay]} (->> moves (sort-by (comp - :cstop)) first)]
+                        (- cstop delay)))
+        p+          (fn [l r] (u/precision (+ l r) 4))
+        samples     (->> unit-finals
+                         sort
+                         (partition-by identity)
+                         (mapv (let [accum (atom 0)]
+                                 (fn [xs]
+                                   [(first xs) (swap! accum p+ (count xs))])))
+                         ->samples)
+
+       [from to] (extents samples)
+        trends   (->> samples
+                      expand-samples
+                      (reduce (fn [acc [t ltn]]
+                                (assoc acc t #js[#js{:c-day t :trend "ltn" :value ltn}])) {}))]
+    {:total-units total-units
+     :total-ltn   total-late
+     :percent-ltn (u/precision (/ total-late total-units) 4)
+     :extents     (extents samples)
+     :trends      trends}))
+
+;;we can go entity-moves->
+;;  cumulative closures
+;;  cumulative %ltn

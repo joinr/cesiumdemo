@@ -399,9 +399,6 @@
       (ports!)
       (countries!)))
 
-(defn moves! []
-  (ces/load-czml! (random-movements 500)))
-
 (defn timed-random-moves! []
   (let [rands  (random-movements +now+ (get @app-state :random-move-count 500))
         pres   (filter (fn [r]
@@ -416,9 +413,6 @@
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
            (ces/load-czml! (->czml-packets "moves" pres #_rands) :id :current)
            :done)))
-
-(defn tada!       [] (do (layers!) (moves!)))
-(defn tada-timed! [] (do (layers!) (timed-random-moves!)))
 
 (defn ^js/Cesium.DataSourceCollection
   get-layers! [& {:keys [id] :or {id :current}}]

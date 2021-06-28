@@ -12,7 +12,8 @@
                  [semantic-csv "0.2.1-alpha1"]
                  #_[lambdaisland/fetch "1.0.33"]
                  [cljs-http "0.1.46"]
-                 [org.clojure/core.async "1.3.618"]]
+                 [org.clojure/core.async "1.3.618"]
+                 [io.helins/interval "1.0.0-beta0"]]
   :profiles
   {:dev
    {:dependencies [[org.clojure/clojurescript "1.10.844"]

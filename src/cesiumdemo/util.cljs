@@ -177,3 +177,7 @@
    (clj->js times)
    (clj->js (for [[x y] points]
               (js/Cesium.Cartesian2 x y)))))
+
+
+(defn precision [n k]
+  (js/parseFloat (.toPrecision n k)))
