@@ -5,6 +5,7 @@
    [cesiumdemo.cesium :as c]
    [cesiumdemo.data :as d]
    [cesiumdemo.entityatlas :as ent]
+   [cesiumdemo.etl :as etl]
    [cesiumdemo.network :as net]
    [cesiumdemo.entityatlas :as ea]
    [cljs-bean.core :refer [bean ->clj ->js]]
@@ -384,6 +385,24 @@
             origin->poe total :id  (str "beavis" (rand)) :move-types move-type
             :from-name from :to-name to)))
 
+;;load from a data-driven entity move.
+(defn entity-move [{:keys [patch dstop start stons src icon cstop transit
+                           cstart id pax dtransit dest compo delay ctransit]}]
+  (let [tstart      (time/add-days +now+ cstart)
+        [jx jy jz]  (or (@app-state :destination-jitter) [0 0 0])]
+    (->move start
+            transit
+            (util/jitter-xyz [jx jy jz] dest)
+            tstart
+            dtransit
+            dstop
+            :id  id
+            :move-types (->> [(and (pos? pax) :pax) (and (pos? stons) :equipment)]
+                             (filter identity)
+                             set)
+            :from-name (str id "-origin") :to-name (str id "destination")
+            :imagery {:Patch patch :Icon icon})))
+
 (defn random-movements
   ([n]
    (apply concat  (repeatedly n random-move)))
@@ -501,6 +520,26 @@
   (p/do! (timed-random-moves!)
          (derive-movement-stats!)))
 
+(defn timed-entity-moves! [emoves]
+  (let [moves  (mapcat entity-move emoves)
+        pres   (filter (fn [r]
+                         (not (some-> r :properties :transit-path))) moves)
+        shared (->> moves
+                    (filter (fn [r] (or (some-> r :properties :shared)
+                                        (= (get r :id) "document"))))
+                    (map (fn [r]
+                           (assoc r :availability (-> r :properties :shared-avail))))
+                    (map shrink-icon))]
+    ;;reverse order to ensure we don't skip time!
+    (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
+           (ces/load-czml! (->czml-packets "moves" pres  ) :id :current)
+           :done)))
+
+(defn load-moves! [moves]
+  (p/do! (do (println [:updating-state!])
+             (swap! app-state assoc :entity-moves moves))
+         (timed-entity-moves! moves)
+         (derive-movement-stats!)))
 
 ;;UI / Page
 ;;=========
@@ -601,6 +640,26 @@
           (partition 2)
           (map (fn [[l i]] (->entry l i))))]]])
 
+
+(defn first-file
+  [e]
+  (let [target (.-currentTarget e)
+        file (-> target .-files (aget 0))]
+    (set! (.-value target) "")
+    file))
+
+(defn load-trends! [file]
+  (let [reader (js/FileReader.)
+        _ (println (str "loading trends:" (.-name file)))
+        _ (clear-moves!)]
+    (set! (.-onload reader)
+          #(some-> % .-target .-result etl/read-visual-moves load-moves!))
+    (.readAsText reader file)))
+
+(defn file-input []
+  [:input.cesium-button
+   {:type "file" :id "file" :accept ".txt" :name "file" :on-change
+    (fn [e] (swap! app-state assoc :file-to-load (load-trends! (first-file e))))}])
 
 (defn rendering-options [s v]
   (merge s
@@ -722,6 +781,7 @@
                                     (println "done")
                                     (play!))}
      "demo"]
+    [file-input]
     [visual-options]
     [layout-options]]])
 
