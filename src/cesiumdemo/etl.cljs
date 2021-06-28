@@ -250,7 +250,7 @@
         trends   (->> samples expand-samples
                      (reduce (fn [acc [t e p]]
                                (assoc acc t #js[#js{:c-day t :trend "pax" :value p}
-                                                #js{:c-day t :trend "equipment" :value p}])) {}))]
+                                                #js{:c-day t :trend "equipment" :value e}])) {}))]
     {:extents (extents samples) :etotal etotal :ptotal ptotal :trends trends}))
 
 ;;this can be dumped into app-state.

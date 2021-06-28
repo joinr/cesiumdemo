@@ -150,15 +150,21 @@
                    }
        :title {:text "Cumulative % Equipment and Pax Closures By C-Day"
                :fontSize 22}
+       :params [{:name "xmin", :value 0}
+                {:name "xmax", :value 1}]
        :data
         {:name "table"},
-       :mark "area",
+       :mark "line",
        :encoding  {:x  {:field "c-day" :type "quantitative"
                         :axis {:title "C-Day"
-                               :titleFontSize 22}},
+                               :titleFontSize 22}
+                        :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
+                                :nice false}},
                    :y  {:field "value"
                         :axis {:title "% Moves Closed"
-                               :titleFontSize 22}},
+                               :titleFontSize 22}
+                        :type "quantitative"
+                        :scale {:domain [0.0 1.0]}},
                    :color  {:field "trend",
                             :type "nominal"
                             :scale  {:domain ["equipment" "pax"]
@@ -300,4 +306,9 @@
   (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))
         cs (->rewind field bound)]
     (.run (.change vw "table" cs))))
+
+(defn push-extents! [plot-name xmin xmax]
+  (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))]
+    (.signal vw "xmin" xmin)
+    (.signal vw "xmax" xmax)))
 

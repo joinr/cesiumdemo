@@ -496,9 +496,11 @@
   (present (add-days +now+ d) ents ))
 
 (defn daily-stats [t]
-  (let [{:strs [pax equipment]}  (get @app-state :entities)]
-    #js[#js{:c-day t :trend "equipment" :value (count (present-on-day t equipment))}
-        #js{:c-day t :trend "pax"       :value (count (present-on-day t pax))}]))
+  (if (@app-state :closure-trends)
+    (get-in @app-state [:closure-trends :trends t])
+    (let [{:strs [pax equipment]}  (get @app-state :entities)]
+      #js[#js{:c-day t :trend "equipment" :value (count (present-on-day t equipment))}
+          #js{:c-day t :trend "pax"       :value (count (present-on-day t pax))}])))
 
 
 ;;when we build a schedule, we want to capture the movement entities in the app state.
@@ -515,19 +517,25 @@
   (drop-layer! "moves" :id :inset)
   (swap! app-state dissoc :entities)
   (v/rewind-samples! :flow-plot-view "c-day" 0)
+  (v/push-extents! :flow-plot-view  0 1)
   (set-day! 0))
 
 (defn random-moves! []
   (p/do! (timed-random-moves!)
          (derive-movement-stats!)))
 
-(defn set-finish! [n]
-  (set! (.-stopTime shared-clock) (time/-julian (add-days +now+ n)))
-  (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED))
+(defn set-finish! [start stop]
+  (set! (.-stopTime shared-clock) (time/-julian (add-days +now+ stop)))
+  (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)
+  (swap! app-state assoc :extents [start stop])
+  (v/push-extents! :flow-plot-view start stop))
 
 (defn timed-entity-moves! [emoves]
   (let [moves  (mapcat entity-move emoves)
-        tmax   (reduce max (map :cstop emoves))
+        [tmin tmax]   (reduce (fn [[m mx] [s sp]]
+                                [(min m s) (max mx sp)])
+                                [0 0]
+                                (map (juxt :cstart :cstop) emoves))
         pres   (filter (fn [r]
                          (not (some-> r :properties :transit-path))) moves)
         shared (->> moves
@@ -539,12 +547,14 @@
     ;;reverse order to ensure we don't skip time!
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
            (ces/load-czml! (->czml-packets "moves" pres  ) :id :current)
-           (set-finish! tmax)
+           (set-finish! tmin tmax)
            :done)))
 
 (defn load-moves! [moves]
   (p/do! (do (println [:updating-state!])
-             (swap! app-state assoc :entity-moves moves))
+             (swap! app-state assoc :entity-moves moves
+                    :ltn-trends (etl/cumulative-ltn-trends moves)
+                    :closure-trends (etl/cumulative-closure-trends moves)))
          (timed-entity-moves! moves)
          (derive-movement-stats!)))
 
@@ -738,6 +748,7 @@
                                     (println "done")
                                     (play!))}
      "demo"]
+    [file-input]
     [visual-options]
     [layout-options]
     [legend]]
@@ -745,7 +756,7 @@
     [:p {:style {:margin "0 auto"}} "Destination Inset"]
     [cesium-inset]]
    [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%" :width "300px" :height "200px"}}
-    [v/vega-chart "flow-plot" v/equipment-spec]]])
+    [v/vega-chart "flow-plot" v/line-equipment-spec]]])
 
 (defn stacked-page [ratom]
   [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
@@ -767,7 +778,7 @@
    [:div.header {:id "chart-root" :style {;:display "flex" ;"inline-block"
                                           :height  "auto" #_"100%" :width "100%"} #_{:position "absolute" :bottom "48%"  :right "0%"}}
     [:div {:width "100%" :height  "auto" #_"100%"}
-     [v/vega-chart "flow-plot" v/equipment-spec #_v/area-spec]]]
+     [v/vega-chart "flow-plot" v/line-equipment-spec #_v/area-spec]]]
    [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
@@ -802,7 +813,7 @@
    [:div {:style  {:flex 1 :width "100%" :align-self "center"}}
     [cesium-inset]]
    [:div {:id "chart-root" :style {:height "auto"   #_"auto" #_"100%" :min-width "100%"}}
-    [v/vega-chart "flow-plot" v/equipment-spec]]
+    [v/vega-chart "flow-plot" v/line-equipment-spec]]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"
                                    :flex-flow "row wrap"}}
     [:button.cesium-button {:style {:flex "0.5"} :id "play" :type "button" :on-click #(play!)}
@@ -823,6 +834,7 @@
                                     (println "done")
                                     (play!))}
      "demo"]
+    [file-input]
     [visual-options]
     [layout-options]]])
 
