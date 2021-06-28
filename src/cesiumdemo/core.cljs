@@ -503,6 +503,11 @@
           #js{:c-day t :trend "pax"       :value (count (present-on-day t pax))}])))
 
 
+(defn daily-ltn-stats [t]
+  (if (@app-state :closure-trends)
+    (get-in @app-state [:ltn-trends :trends t])
+      #js[#js{:c-day t :trend "ltn" :value 0}]))
+
 ;;when we build a schedule, we want to capture the movement entities in the app state.
 ;;This speeds up querying.  Alterantely, we could just pre-compute all the availability
 ;;information too...
@@ -518,6 +523,8 @@
   (swap! app-state dissoc :entities)
   (v/rewind-samples! :flow-plot-view "c-day" 0)
   (v/push-extents! :flow-plot-view  0 1)
+  (v/push-extents! :ltn-plot-view  0 1)
+  (v/rewind-samples! :ltn-plot-view "c-day" 0)
   (set-day! 0))
 
 (defn random-moves! []
@@ -528,7 +535,8 @@
   (set! (.-stopTime shared-clock) (time/-julian (add-days +now+ stop)))
   (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)
   (swap! app-state assoc :extents [start stop])
-  (v/push-extents! :flow-plot-view start stop))
+  (v/push-extents! :flow-plot-view start stop)
+  (v/push-extents! :ltn-plot-view start stop))
 
 (defn timed-entity-moves! [emoves]
   (let [moves  (mapcat entity-move emoves)
@@ -775,10 +783,12 @@
      [cesium-root]]
     [:div {:style  {:flex "0.50" :max-width "50%"}}
      [cesium-inset]]]
-   [:div.header {:id "chart-root" :style {;:display "flex" ;"inline-block"
-                                          :height  "auto" #_"100%" :width "100%"} #_{:position "absolute" :bottom "48%"  :right "0%"}}
-    [:div {:width "100%" :height  "auto" #_"100%"}
-     [v/vega-chart "flow-plot" v/line-equipment-spec #_v/area-spec]]]
+   [:div {:id "chart-root" :style {#_#_:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "45%"}}
+     [v/vega-chart "flow-plot" v/line-equipment-spec]]
+    [:div {:style {:flex "0.1" :width "1%"}}]
+    [:div {:style {:flex "1" :width "45%"}}
+      [v/vega-chart "ltn-plot" v/ltn-spec]]]
    [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
@@ -812,8 +822,12 @@
      [cesium-root]]
    [:div {:style  {:flex 1 :width "100%" :align-self "center"}}
     [cesium-inset]]
-   [:div {:id "chart-root" :style {:height "auto"   #_"auto" #_"100%" :min-width "100%"}}
-    [v/vega-chart "flow-plot" v/line-equipment-spec]]
+   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "45%"}}
+     [v/vega-chart "flow-plot" v/line-equipment-spec]]
+    [:div {:style {:flex "0.1" :width "1%"}}]
+    [:div {:style {:flex "1" :width "45%"}}
+     [v/vega-chart "ltn-plot" v/ltn-spec]]]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"
                                    :flex-flow "row wrap"}}
     [:button.cesium-button {:style {:flex "0.5"} :id "play" :type "button" :on-click #(play!)}
@@ -880,5 +894,7 @@
   (add-watch c-day :plotting
              (fn [k r oldt newt]
                (if (< newt oldt)
-                 (v/rewind-samples! :flow-plot-view "c-day" newt)
-                 (v/push-samples! :flow-plot-view (daily-stats newt))))))
+                 (do (v/rewind-samples! :flow-plot-view "c-day" newt)
+                     (v/rewind-samples! :ltn-plot-view "c-day" newt))
+                 (do (v/push-samples! :flow-plot-view (daily-stats newt))
+                     (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))

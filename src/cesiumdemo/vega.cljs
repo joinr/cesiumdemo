@@ -148,7 +148,7 @@
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"
                    }
-       :title {:text "Cumulative % Equipment and Pax Closures By C-Day"
+       :title {:text "% Closures By C-Day"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}]
@@ -169,6 +169,38 @@
                             :type "nominal"
                             :scale  {:domain ["equipment" "pax"]
                                      :range  ["#ffa500"   "#ff0000"]}
+                            :legend  {:direction "horizontal"
+                                      :orient "bottom"
+                                      :layout {:bottom {:anchor "middle"}}}}}}
+      (merge dark-theme)
+      clj->js))
+
+(def ltn-spec
+  (-> {:width "container" :height 100;;:width 600, :height 200,
+       "autosize" {"type" "pad",
+                   "resize" true ;;maybe revisit this.
+                   "contains" "padding"}
+       :title {:text "%Late To Need"
+               :fontSize 22}
+       :params [{:name "xmin", :value 0}
+                {:name "xmax", :value 1}]
+       :data
+        {:name "table"},
+       :mark "line",
+       :encoding  {:x  {:field "c-day" :type "quantitative"
+                        :axis {:title "C-Day"
+                               :titleFontSize 22}
+                        :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
+                                :nice false}},
+                   :y  {:field "value"
+                        :axis {:title "% Late Arrival"
+                               :titleFontSize 22}
+                        :type "quantitative"
+                        :scale {:domain [0.0 1.0]}},
+                   :color  {:field "trend",
+                            :type "nominal"
+                            :scale  {:domain ["ltn"]
+                                     :range  ["#03befc"]}
                             :legend  {:direction "horizontal"
                                       :orient "bottom"
                                       :layout {:bottom {:anchor "middle"}}}}}}

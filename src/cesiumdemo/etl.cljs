@@ -275,9 +275,10 @@
         samples     (->> unit-finals
                          sort
                          (partition-by identity)
-                         (mapv (let [accum (atom 0)]
+                         (map (let [accum (atom 0)]
                                  (fn [xs]
                                    [(first xs) (swap! accum p+ (count xs))])))
+                         (map (fn [[t n]] [t (u/precision (double (/ n total-units)) 4)]))
                          ->samples)
 
        [from to] (extents samples)
