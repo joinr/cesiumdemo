@@ -325,7 +325,7 @@
       :name bbid
        :billboard (when (@app-state :home-icons)
                     {:image (ea/patch-path Patch)
-                     :scale 0.25
+                     :scale 0.20
                      :pixelOffset {:cartesian2 [0 0]}
                      :eyeOffset   {:cartesian [0 0 -10000]}
                      :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
@@ -336,7 +336,7 @@
       :name (str bbid "src")
       :billboard (when (@app-state :home-icons)
                    {:image (ea/icon-path Icon)
-                    :scale 0.85
+                    :scale 0.5 #_0.85
                     :pixelOffset {:cartesian2 [63 0]}
                     :eyeOffset   {:cartesian [0 0 -10000]}
                     :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
