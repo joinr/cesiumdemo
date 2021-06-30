@@ -1,4 +1,11 @@
-(ns cesiumdemo.util)
+(ns cesiumdemo.util
+  (:require [goog.color :as gcolor]))
+
+(defn rgb->hex [[r g b]]
+  (gcolor/rgbToHex r g b))
+
+(defn hex->rgb [hx]
+  (gcolor/hexToRgb hx))
 
 (defn midpoint [[t0 x0 y0 z0] [t1 x1 y1 z1]]
   [(+ t0 (/ (- t1 t0) 2.0))

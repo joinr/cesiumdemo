@@ -17,18 +17,38 @@
 
 #_(set! *warn-on-infer* true)
 
+(def colors {"Army Active"  [0   0   0   255]
+             "Army Guard"   [192 192 192 255]
+             "Army Reserve" [192 192 192 255]
+             "AF Active"    [0   0   0   255]
+             :pax           [0, 59, 255  125] #_[0, 242, 255 125]  #_[255 0 0 125]
+             :equipment     [255, 165, 0, 125]
+             :ltn           [208, 217, 247 255]})
+
+(def color-schemes
+  {:red    {:colors {:equipment [255 0 0 125]}}
+   :orange {:colors {:equipment [255, 165, 0, 125]}}
+   :green  {:colors {:equipment [181 230 29 125]}}})
+
 (def default-state {:transit-jitter     [2 2 0]
                     :destination-jitter [2.5 2.5 0]
                     :home-icons         true
                     :shared-icons       true
                     :layout             :stacked
                     :random-move-count  500
-                    :random-move-length 180})
+                    :random-move-length 180
+                    :transit-pax        false
+                    :colors colors
+                    })
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
 
 (defonce app-state
   (reagent/atom (assoc default-state :loaded false)))
+
+(defn get-color [k]
+  (get-in @app-state [:colors k]))
 
 (defn no-jitter! []
   (swap! app-state dissoc :transit-jitter :destination-jitter))
@@ -52,9 +72,13 @@
   (js/Cesium.ClockViewModel.))
 
 (defn play! []
+  (println  [:play (.-clockRange shared-clock)])
+  (when-not (= (.-clockRange shared-clock)  js/Cesium.ClockRange.CLAMPED)
+    (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED))
   (set! (.-shouldAnimate shared-clock) true))
 
 (defn stop! []
+  (println  [:stop (.-clockRange shared-clock)])
   (set! (.-shouldAnimate shared-clock) false))
 
 (defn set-day! [n]
@@ -117,18 +141,11 @@
                 (and (countries  country)
                      (or (compos component) (not (#{"N/A"} jointbase))))))))
 
-(def colors {"Army Active"  [0   0   0   255]
-             "Army Guard"   [192 192 192 255]
-             "Army Reserve" [192 192 192 255]
-             "AF Active"    [0   0   0   255]
-             :pax           [255 0 0 125]
-             :equipment     [255, 165, 0, 125] })
-
 (defn ->czml-origin [{:keys [lat long sitename component] :as m}]
   {:id   sitename
    :name sitename
    :position {:cartographicDegrees [long lat  #_long 0]}
-   :point {:color {:rgba (colors component)}
+   :point {:color {:rgba (get-color component)}
           ;:outlineColor {:rgba [255 0 0 255]}
           ;:outlineWidth 4
            :pixelSize 10}
@@ -138,11 +155,11 @@
 (defn ->czml-poe [{:keys [lat long long-name] :as m}]
   {:id   long-name
    :name long-name
-   :position {:cartographicDegrees [long lat 100]}
+   :position {:cartographicDegrees [long lat 200]}
    :point {:color {:rgba [58, 158, 85 255] }
            :outlineColor {:rgba [0 0 0 255]}
            :outlineWidth 1
-           :pixelSize 20}
+           :pixelSize 10}
    :properties m})
 
 (defn forts! []
@@ -152,7 +169,10 @@
   (ces/load-czml! (->czml-packets "ports" (map ->czml-poe d/ports))))
 
 (defn states! []
-  (ces/load-geojson! "ne_10m_us_states.topojson"))
+  (ces/load-geojson! "ne_10m_us_states.topojson" :style
+                     {:stroke js/Cesium.Color.BLACK
+                      :fill  (js/Cesium.Color.DARKGRAY.withAlpha 0.7),
+                      :strokeWidth 3}))
 
 (defn countries! []
   (ces/load-geojson! "all-countries.geo.json" :id :inset
@@ -183,10 +203,10 @@
      :name arc
      :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
-                :material  {:solidColor {:color {:rgba  (colors :equipment)}}}
-                :width 1
+                :material  {:solidColor {:color {:rgba  (get-color :equipment)}}}
+                :width 3
                 :clampToGround false
-                :arcType "NONE" #_js/Cesium.ArcType.NONE}
+                #_#_:arcType "NONE" #_js/Cesium.ArcType.NONE}
      :properties {:move-type "equipment"}}))
 
 (defn pax-movement
@@ -198,10 +218,10 @@
       :name arc
       :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
                                                                       (stop  :long) (stop  :lat) 200])}
-                 :material  {:solidColor {:color {:rgba (colors :pax)}}}
-                 :width 1
+                 :material  {:solidColor {:color {:rgba (get-color :pax)}}}
+                 :width 3
                  :clampToGround false
-                 :arcType  "NONE" #_js/Cesium.ArcType.NONE}
+                 #_#_:arcType  "NONE" #_js/Cesium.ArcType.NONE}
       :properties {:move-type "pax"}}))
 
 (defn line->dynamic-line [mv start stop]
@@ -327,8 +347,8 @@
       [(when (move-types  :equipment)
         {:id   (str (gensym "eq") "transit")
          :name "equip transit"
-         :path {:material  {:polylineOutline {:color        {:rgba (assoc (colors :equipment) 3 20)},
-                                              :outlineColor {:rgba (assoc (colors :equipment) 3 20)}
+         :path {:material  {:polylineOutline {:color        {:rgba (assoc (get-color :equipment) 3 20)},
+                                              :outlineColor {:rgba (assoc (get-color :equipment) 3 20)}
                                               :outlineWidth 1
                                               }}
                 :width    1,
@@ -337,11 +357,12 @@
          :availability sharedavail
          :position {:reference target-pos}
          :properties {:transit-path true :shared true :shared-avail sharedavail}})
-      (when (move-types  :pax)
+       (when (and (move-types  :pax)
+                  (get @app-state  :transit-pax))
         {:id   (str (gensym "pax") "transit")
          :name "pax transit"
-         :path {:material  {:polylineOutline {:color        {:rgba (assoc (colors :pax) 3 20)},
-                                              :outlineColor {:rgba (assoc (colors :pax) 3 20)}
+         :path {:material  {:polylineOutline {:color        {:rgba (assoc (get-color :pax) 3 20)},
+                                              :outlineColor {:rgba (assoc (get-color :pax) 3 20)}
                                               :outlineWidth 1
                                               }}
                 :width    1,
@@ -505,7 +526,9 @@
 
 (defn daily-ltn-stats [t]
   (if (@app-state :closure-trends)
-    (get-in @app-state [:ltn-trends :trends t])
+    (or (get-in @app-state [:ltn-trends :trends t])
+        (when (< t (get-in @app-state [:ltn-trends :extents 0]))
+          #js[#js{:c-day t :trend "ltn" :value 0}]))
       #js[#js{:c-day t :trend "ltn" :value 0}]))
 
 ;;when we build a schedule, we want to capture the movement entities in the app state.
@@ -518,13 +541,13 @@
 
 (defn clear-moves! []
   (stop!)
+  (swap! app-state dissoc :entities)
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
-  (swap! app-state dissoc :entities)
   (v/rewind-samples! :flow-plot-view "c-day" 0)
   (v/push-extents! :flow-plot-view  0 1)
-  (v/push-extents! :ltn-plot-view  0 1)
   (v/rewind-samples! :ltn-plot-view "c-day" 0)
+  (v/push-extents! :ltn-plot-view  0 1)
   (set-day! 0))
 
 (defn random-moves! []
@@ -532,11 +555,14 @@
          (derive-movement-stats!)))
 
 (defn set-finish! [start stop]
-  (set! (.-stopTime shared-clock) (time/-julian (add-days +now+ stop)))
+  (set! (.-startTime shared-clock) +now+)
+  (set! (.-startTime shared-clock) (time/-julian (add-days +now+ start)))
+  (set! (.-stopTime shared-clock)  (time/-julian (add-days +now+ stop)))
   (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)
   (swap! app-state assoc :extents [start stop])
   (v/push-extents! :flow-plot-view start stop)
-  (v/push-extents! :ltn-plot-view start stop))
+  (v/push-extents! :ltn-plot-view start stop)
+  (v/push-samples! :ltn-plot-view #js[#js{:c-day start :trend "ltn" :value 0}]))
 
 (defn timed-entity-moves! [emoves]
   (let [moves  (mapcat entity-move emoves)
@@ -564,7 +590,8 @@
                     :ltn-trends (etl/cumulative-ltn-trends moves)
                     :closure-trends (etl/cumulative-closure-trends moves)))
          (timed-entity-moves! moves)
-         (derive-movement-stats!)))
+         (derive-movement-stats!)
+         (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)))
 
 ;;UI / Page
 ;;=========
@@ -681,6 +708,11 @@
           #(some-> % .-target .-result etl/read-visual-moves load-moves!))
     (.readAsText reader file)))
 
+(defn change-color-scheme! [k]
+  (when-let [{:keys [colors] :as scheme} (color-schemes k)]
+    (swap! app-state #(merge-with merge % scheme))
+    (v/push-signals! :flow-plot-view {"lineColor" (util/rgb->hex (get-color :equipment))})))
+
 (defn file-input []
   [:input.cesium-button
    {:type "file" :id "file" :accept ".txt" :name "file" :on-change
@@ -723,6 +755,14 @@
      :no-jitter        :no-jitter}
     :on-change #(swap! app-state rendering-options %)))
 
+(defn color-scheme-options []
+  (->drop-down "Color Scheme" "schemeopts"
+               {:default :orange
+                :red     :red
+                :orange  :orange
+                :green   :green}
+               :on-change #(change-color-scheme! %)))
+
 (defn layout-options []
   (->drop-down "Page Layout" "pagelayout"
     {:stacked :stacked
@@ -758,13 +798,15 @@
      "demo"]
     [file-input]
     [visual-options]
+    [color-scheme-options]
     [layout-options]
     [legend]]
    [:div.header {:id "inset-root" :style {:position "absolute" :top "55%"    :right "0%" :width "500px" :height "250px"}}
     [:p {:style {:margin "0 auto"}} "Destination Inset"]
     [cesium-inset]]
    [:div.header {:id "chart-root" :style {:position "absolute" :bottom "48%"  :right "0%" :width "300px" :height "200px"}}
-    [v/vega-chart "flow-plot" v/line-equipment-spec]]])
+    [v/vega-chart "flow-plot"
+     (v/assoc-params v/line-equipment-spec {"lineColor" (get-color :ltn)})]]])
 
 (defn stacked-page [ratom]
   [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
@@ -788,7 +830,7 @@
      [v/vega-chart "flow-plot" v/line-equipment-spec]]
     [:div {:style {:flex "0.1" :width "1%"}}]
     [:div {:style {:flex "1" :width "45%"}}
-      [v/vega-chart "ltn-plot" v/ltn-spec]]]
+     [v/vega-chart "ltn-plot" v/ltn-spec]]]
    [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
@@ -811,6 +853,7 @@
      "demo"]
     [file-input]
     [visual-options]
+    [color-scheme-options]
     [layout-options]]])
 
 (defn tightly-stacked-page [ratom]
@@ -818,16 +861,14 @@
    [:div {:id "c-day" :class "header" :style {:font-size "xx-large"}}
     [:p {:style {:margin "0 auto" :text-align "center" }}
      "C-Day: " @c-day]]
-   [:div {:style {:flex 1  :width "100%" :align-self "center"}}
-     [cesium-root]]
-   [:div {:style  {:flex 1 :width "100%" :align-self "center"}}
-    [cesium-inset]]
-   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "45%"}}
-     [v/vega-chart "flow-plot" v/line-equipment-spec]]
-    [:div {:style {:flex "0.1" :width "1%"}}]
-    [:div {:style {:flex "1" :width "45%"}}
-     [v/vega-chart "ltn-plot" v/ltn-spec]]]
+   [:div {:style {:flex 1  :width "100%" :align-self "center" :position "relative"}}
+          [cesium-root]
+          [:div {:style {:position "absolute" :width "30%" :left "70%" :top "60%"}}
+           [cesium-inset]]]
+   [:div {:style {:width "95%"}}
+    [v/vega-chart "flow-plot" v/line-equipment-spec]]
+   [:div {:style {:width "95%"}}
+    [v/vega-chart "ltn-plot" v/ltn-spec]]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"
                                    :flex-flow "row wrap"}}
     [:button.cesium-button {:style {:flex "0.5"} :id "play" :type "button" :on-click #(play!)}
@@ -850,6 +891,7 @@
      "demo"]
     [file-input]
     [visual-options]
+    [color-scheme-options]
     [layout-options]]])
 
 (defn ensure-layers! [obj]

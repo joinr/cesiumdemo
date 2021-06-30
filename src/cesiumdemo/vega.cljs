@@ -151,29 +151,47 @@
        :title {:text "% Closures By C-Day"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
-                {:name "xmax", :value 1}]
-       :data
-        {:name "table"},
-       :mark "line",
-       :encoding  {:x  {:field "c-day" :type "quantitative"
-                        :axis {:title "C-Day"
-                               :titleFontSize 22}
-                        :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
-                                :nice false}},
-                   :y  {:field "value"
-                        :axis {:title "% Moves Closed"
-                               :titleFontSize 22}
-                        :type "quantitative"
-                        :scale {:domain [0.0 1.0]}},
-                   :color  {:field "trend",
-                            :type "nominal"
-                            :scale  {:domain ["equipment" "pax"]
-                                     :range  ["#ffa500"   "#ff0000"]}
-                            :legend  {:direction "horizontal"
-                                      :orient "bottom"
-                                      :layout {:bottom {:anchor "middle"}}}}}}
+                {:name "xmax", :value 1}
+                {:name "lineColor" :value "#ffa500"}]
+       :data    {:name "table"
+                 :transform [{:filter "datum.trend = 'equipment'"}
+                             ]},
+       :layer [{:mark "line",
+                :encoding  {:x  {:field "c-day" :type "quantitative"
+                                 :axis {:title "C-Day"
+                                        :titleFontSize 22}
+                                 :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
+                                         :nice false}},
+                            :y  {:field "value"
+                                 :axis {:title "% Moves Closed"
+                                        :titleFontSize 22}
+                                 :type "quantitative"
+                                 :scale {:domain [0.0 1.0]}},
+                             :color  {:field "trend",
+                                      :type "nominal"
+                                      :scale  {:domain ["equipment" #_"pax"]
+                                               :range  [{:expr "lineColor"} #_#_"#ffa500"   "#ff0000"]}
+                                      :legend  {:direction "horizontal"
+                                                :orient "bottom"
+                                                :layout {:bottom {:anchor "middle"}}
+                                                :labelFontSize 16
+                                                :symbolSize 200
+                                                :title nil}}
+                            :size {:value 5}}}
+               {:mark "rule",
+                :encoding {:x    {:field "c-day" :aggregate "max"}
+                           :y    {:datum 0}
+                           :y2   {:field "value" :aggregate "max"
+                                  :type "quantitative"
+                                  :scale {:domain [0.0 1.0]} }
+                           :size {:value 5},
+                           :color {:value {:expr "lineColor"}}
+                           :strokeCap {:value "square"}
+                           :opacity {:value 0.65}
+                           }
+                }]}
       (merge dark-theme)
-      clj->js))
+      #_clj->js))
 
 (def ltn-spec
   (-> {:width "container" :height 100;;:width 600, :height 200,
@@ -183,29 +201,45 @@
        :title {:text "%Late To Need"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
-                {:name "xmax", :value 1}]
+                {:name "xmax", :value 1}
+                {:name "lineColor" :value "#5effff"}]
        :data
-        {:name "table"},
-       :mark "line",
-       :encoding  {:x  {:field "c-day" :type "quantitative"
-                        :axis {:title "C-Day"
-                               :titleFontSize 22}
-                        :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
-                                :nice false}},
-                   :y  {:field "value"
-                        :axis {:title "% Late Arrival"
-                               :titleFontSize 22}
-                        :type "quantitative"
-                        :scale {:domain [0.0 1.0]}},
-                   :color  {:field "trend",
-                            :type "nominal"
-                            :scale  {:domain ["ltn"]
-                                     :range  ["#03befc"]}
-                            :legend  {:direction "horizontal"
-                                      :orient "bottom"
-                                      :layout {:bottom {:anchor "middle"}}}}}}
+       {:name "table"},
+       :layer [{:mark "line",
+                :encoding  {:x  {:field "c-day" :type "quantitative"
+                                 :axis {:title "C-Day"
+                                        :titleFontSize 22}
+                                 :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
+                                         :nice false}},
+                            :y  {:field "value"
+                                 :axis {:title "% Late Arrival"
+                                        :titleFontSize 22}
+                                 :type "quantitative"
+                                 :scale {:domain [0.0 1.0]}},
+                            :color  {:field "trend",
+                                     :type "nominal"
+                                     :scale  {:domain ["ltn"]
+                                              :range  [{:expr "lineColor"} #_"#03befc"]}
+                                     :legend  {:direction "horizontal"
+                                               :orient "bottom"
+                                               :layout {:bottom {:anchor "middle"}}
+                                               :labelFontSize 16
+                                               :symbolSize 200
+                                               :title nil}}
+                            :size {:value 5}}}
+               {:mark "rule",
+                :encoding {:x    {:field "c-day" :aggregate "max"}
+                           :y    {:datum 0}
+                           :y2   {:field "value" :aggregate "max"
+                                  :type "quantitative"
+                                  :scale {:domain [0.0 1.0]} }
+                           :size {:value 5}
+                           :strokeCap {:value "square"}
+                           :opacity {:value 0.65}
+                           :color {:value {:expr "lineColor"}}
+                           }}]}
       (merge dark-theme)
-      clj->js))
+      #_clj->js))
 
 (def equipment-spec
   (-> {:width "container" :height 100;;:width 600, :height 200,
@@ -236,7 +270,7 @@
                                       :orient "bottom"
                                       :layout {:bottom {:anchor "middle"}}}}}}
       (merge dark-theme)
-      clj->js))
+      #_clj->js))
 
 (defn random-changes [n]
   (for [i (range n)]
@@ -264,7 +298,10 @@
   (vega.View. (vega.parse spec) #js{:renderer "canvas" :container "#chart-root" :hover true :log-level vega.Warn}))
 
 (defn vega-chart [name spec]
-  (let [vw (keyword (str name "-view"))]
+  (let [vw (keyword (str name "-view"))
+        spec (if (map? spec)
+               (clj->js spec)
+               spec)]
     (r/create-class
      {:display-name (str name)
       :reagent-render (fn [] [:div])
@@ -288,7 +325,9 @@
 (defn chart-root
   ([k chart-spec]
    [:div
-    [vega-chart  k chart-spec]])
+    [vega-chart  k (if (map? chart-spec)
+                     (clj->js chart-spec)
+                     chart-spec)]])
   ([] (chart-root "chart" area-spec)))
 
 
@@ -339,8 +378,26 @@
         cs (->rewind field bound)]
     (.run (.change vw "table" cs))))
 
-(defn push-extents! [plot-name xmin xmax]
+(defn clear-data! [plot-name]
+  (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))
+        ]
+    (.data vw "table" nil)))
+
+(defn push-signals! [plot-name sig-val]
   (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))]
-    (.signal vw "xmin" xmin)
-    (.signal vw "xmax" xmax)))
+    (doseq [[k v] sig-val]
+      (.signal vw k v))))
+
+(defn push-extents! [plot-name xmin xmax]
+  (push-signals! plot-name
+     {"xmin" xmin
+      "xmax" xmax}))
+
+(defn assoc-params [spec kv]
+  (update-in spec [:params]
+             (fn [xs]
+               (into [] (map (fn [{:keys [name value] :as p}]
+                               (if-let [v (kv name)]
+                                 (assoc p name v)
+                                 p))) xs))))
 
