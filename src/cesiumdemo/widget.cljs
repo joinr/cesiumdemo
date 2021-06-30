@@ -143,7 +143,7 @@
 
 (defn load-geojson! [path & {:keys [style id] :as opts :or {id :current}}]
   (let [style (if style style
-                  {:stroke Cesium.Color.BLACK
+                  {:stroke js/Cesium.Color.BLACK
                    :fill  (js/Cesium.Color.GREY.withAlpha 0.5),
                    :strokeWidth 3})
         v (@view id)
