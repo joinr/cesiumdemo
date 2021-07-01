@@ -75,16 +75,21 @@
        (mapcat (juxt :tstart :RDD :CRD))
        bounds))
 
+(defn if-empty [v else]
+  (if (empty? v) else v))
+
 ;;We can supply patches and icons via the data with extra fields. Origin, etc.
 ;;should already be taken care of.
 (defn add-info [{:keys [UIC PATCH ICON] :as e}]
-  (if (and PATCH ICON)
+  (let [PATCH (if-empty PATCH nil)
+        ICON  (if-empty ICON  nil)]
+    (if (and PATCH ICON)
       e
       (if-let [u (ea/find-unit UIC)]
         (assoc e :PATCH  (or PATCH (u :Patch))
-                 :ICON   (or ICON (u :Icon)))
+               :ICON   (or ICON (u :Icon)))
         (assoc e :PATCH "USARMY.jpg"
-               e :ICON  "unknown.gif"))))
+               e :ICON  "unknown.gif")))))
 
 (defn collect-entities [xs]
   (let [off *offset*
@@ -96,7 +101,8 @@
                                 (assoc r :tstart (- ALD (offset)))))
                          (group-by :UIC))]
          (let [x (first xs)]
-           (try [e (->> {:UIC e :SRC (get x :SRC) :COMPO (get x :CMP) :bounds (entity-bounds xs) :moves (vec (sort-by :tstart xs))}
+           (try [e (->> {:UIC e :SRC (get x :SRC) :COMPO (get x :CMP) :PATCH (get x :PATCH) :ICON (get x :ICON)
+                         :bounds (entity-bounds xs) :moves (vec (sort-by :tstart xs))}
                         add-info)]
                 (catch js/Error e (throw (ex-info "bad-data!" {:e e :xs xs}))))))
        (into {}))))

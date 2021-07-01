@@ -13,7 +13,8 @@
    [cesiumdemo.time :as time :refer [->jd add-days iso-str interval]]
    [cesiumdemo.util :as util]
    [cesiumdemo.czml :as czml]
-   [promesa.core :as p]))
+   [promesa.core :as p]
+   [clojure.string :as s]))
 
 #_(set! *warn-on-infer* true)
 
@@ -38,8 +39,14 @@
                     :random-move-count  500
                     :random-move-length 180
                     :transit-pax        false
+                    :transit-equipment  true
+                    :transit-spline-detail 2
+                    :transit-width      1
                     :colors colors
+                    :pax-origin-width 3
+                    :equipment-origin-width 3
                     })
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Vars
@@ -58,6 +65,55 @@
 
 (defn default-jitter! []
   (swap! app-state merge default-state))
+
+(defn low-quality! []
+  (ces/set-quality! :low :id :current)
+  (ces/set-quality! :low :id :inset))
+
+(defn high-quality! []
+  (ces/set-quality! :low :id :current)
+  (ces/set-quality! :low :id :inset))
+
+;;sparse rendering hueristic based on move count.
+(defn set-sparse! [n]
+  (let [m          (cond (<= n 500)
+                         {:transit-equipment     true
+                          :transit-width         1}
+                         (<= n 1000)
+                         {:transit-equipment     0.05
+                          :transit-width         3}
+                         (<= n 3000)
+                         {:transit-equipment     0.02
+                          :transit-width         5})]
+    (swap! app-state merge m)
+    m))
+
+;;central api for determining probabilistic rendering to
+;;enable sparse plotting for high density stuff.
+(defn show? [trend]
+  (when-let [threshold (get @app-state  trend)]
+    (if (number? threshold)
+      (if (== threshold 1)
+        true
+        (<= (rand) threshold))
+      true)))
+
+;;js api for ease of use when we don't
+;;have clojure., to manipulate the app state
+;;and the like...
+(defn setOption [k v]
+  (swap! app-state assoc k v)
+  true)
+
+(defn setIn [ks v]
+  (swap! app-state assoc-in ks v)
+  true)
+
+(defn getState []
+  (clj->js @app-state))
+
+(defn getKeys []
+  (clj->js (keys @app-state)))
 
 ;;Date/Time Junk
 ;;We have to convert between js/Date and cesium's julian
@@ -84,16 +140,6 @@
 (defn set-day! [n]
   (set! (.-currentTime shared-clock)
         (add-days (.-startTime shared-clock) n)))
-
-(defn add-jdays [^js/Cesium.JulianDate  from n]
-  (let [res (.clone from)
-        _   (js/Cesium.JulianDate.addDays res n res)]
-    res))
-
-#_(defn ^js/Cesium.JulianDate ->jd [d]
-  (js/Cesium.JulianDate.fromDate d))
-
-(def +jnow+ (->jd +now+))
 
 ;;state for the current time in days relative to now.
 ;;We may move this into the app-state or into reframe
@@ -204,9 +250,9 @@
      :polyline {:positions {:cartographicDegrees (mapv util/jitter+ [(start :long) (start :lat) 200
                                                                (stop  :long) (stop  :lat) 200])}
                 :material  {:solidColor {:color {:rgba  (get-color :equipment)}}}
-                :width 3
+                :width (get @app-state :equipment-origin-width 3)
                 :clampToGround false
-                #_#_:arcType "NONE" #_js/Cesium.ArcType.NONE}
+                :arcType "NONE" #_js/Cesium.ArcType.NONE}
      :properties {:move-type "equipment"}}))
 
 (defn pax-movement
@@ -219,9 +265,9 @@
       :polyline {:positions {:cartographicDegrees (mapv util/jitter- [(start :long) (start :lat) 100000
                                                                       (stop  :long) (stop  :lat) 200])}
                  :material  {:solidColor {:color {:rgba (get-color :pax)}}}
-                 :width 3
+                 :width (get @app-state :pax-origin-width 3)
                  :clampToGround false
-                 #_#_:arcType  "NONE" #_js/Cesium.ArcType.NONE}
+                 :arcType  "NONE" #_js/Cesium.ArcType.NONE}
       :properties {:move-type "pax"}}))
 
 (defn line->dynamic-line [mv start stop]
@@ -279,13 +325,20 @@
           (-> (equipment-movement from-name to-name  (vec->lat-long from) (vec->lat-long  transit))
               (line->dynamic-line tstart (add-days tstart dtransit))))
 
-        {:keys [Patch Icon]} (or imagery
-                                 (rand-nth ea/known-imagery))
+        {:keys [Patch Icon]} imagery
+        ;;ensure we can render.
+        empties #{"none" "blank" "unknown"}
+        Patch (when (and Patch
+                         (not (empties (s/lower-case Patch))))
+                Patch)
+        Icon  (when (and Icon
+                         (not (empties (s/lower-case Icon))))
+                Icon)
 
         ttransit  (time/add-days tstart dtransit)
         tstop     (time/add-days tstart  dstop)
 
-       moves (->> [from transit to]
+         moves (->> [from transit to]
                    (util/ensure-partitions 3)
                    (map (fn [t [lng lat h]]
                           [t lng lat h]) [0 dtransit dstop]))
@@ -295,7 +348,7 @@
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
                    (util/jitter-txyz [jx jy jz]))
-        splined-path (util/spline-degrees 2 [tr mp t])
+        splined-path (util/spline-degrees (get @app-state :transit-spline-detail 1) [tr mp t])
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path) #_[f tr mp t]]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 
@@ -323,7 +376,7 @@
       target
       {:id   bbid
       :name bbid
-       :billboard (when (@app-state :home-icons)
+       :billboard (when (and (@app-state :home-icons) Patch)
                     {:image (ea/patch-path Patch)
                      :scale 0.20
                      :pixelOffset {:cartesian2 [0 0]}
@@ -334,38 +387,44 @@
        :properties {:billboard-type "patch" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
-      :billboard (when (@app-state :home-icons)
+      :billboard (when (and (@app-state :home-icons) Icon)
                    {:image (ea/icon-path Icon)
                     :scale 0.5 #_0.85
                     :pixelOffset {:cartesian2 [63 0]}
                     :eyeOffset   {:cartesian [0 0 -10000]}
                     :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
+      :point (when (and (@app-state :home-icons) (not Icon))
+               {:color {:rgba [204, 255, 225 255]}
+                :outlineColor {:rgba [204, 255, 225 125]}
+                :outlineWidth 2
+                :pixelSize 4})
       :availability dynavail
       :position {:reference target-pos}
       :properties {:billboard-type "icon" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}]
-     (filter identity 
-      [(when (move-types  :equipment)
+     (filter identity
+       [(when (and (move-types  :equipment)
+                   (show? :transit-equipment))
         {:id   (str (gensym "eq") "transit")
          :name "equip transit"
          :path {:material  {:polylineOutline {:color        {:rgba (assoc (get-color :equipment) 3 20)},
                                               :outlineColor {:rgba (assoc (get-color :equipment) 3 20)}
                                               :outlineWidth 1
                                               }}
-                :width    1,
+                :width    (get @app-state :transit-width 1),
                 :leadTime 0
                 :resolution (* czml/+day-seconds+ 10)}
          :availability sharedavail
          :position {:reference target-pos}
          :properties {:transit-path true :shared true :shared-avail sharedavail}})
        (when (and (move-types  :pax)
-                  (get @app-state  :transit-pax))
+                  (show? :transit-pax))
         {:id   (str (gensym "pax") "transit")
          :name "pax transit"
          :path {:material  {:polylineOutline {:color        {:rgba (assoc (get-color :pax) 3 20)},
                                               :outlineColor {:rgba (assoc (get-color :pax) 3 20)}
                                               :outlineWidth 1
                                               }}
-                :width    1,
+                :width    (get @app-state :transit-width 1),
                 :leadTime 0
                 :resolution (* czml/+day-seconds+ 10)}
          :availability sharedavail
@@ -405,7 +464,8 @@
             (util/jitter-xyz [jx jy jz] destination)
             tstart
             origin->poe total :id  (str "beavis" (rand)) :move-types move-type
-            :from-name from :to-name to)))
+            :from-name from :to-name to
+            :imagery (rand-nth ea/known-imagery))))
 
 ;;load from a data-driven entity move.
 (defn entity-move [{:keys [patch dstop start stons src icon cstop transit
@@ -432,28 +492,18 @@
    (apply concat
     (repeatedly n
        #(random-move :tstart
-          (add-days start (rand-int (get @app-state :random-move-length 180))))))))
+                     (add-days start (rand-int (get @app-state :random-move-length 180)))))))
+  ([start n f]
+   (apply concat
+          (repeatedly n
+                      #(let [{:keys [tstart origin->poe poe->pod]} (f start)]
+                         (random-move :tstart tstart :origin->poe origin->poe :poe->pod poe->pod))))))
 
 (defn layers! []
   (do (states!)
       (forts!)
       (ports!)
       (countries!)))
-
-(defn timed-random-moves! []
-  (let [rands  (random-movements +now+ (get @app-state :random-move-count 500))
-        pres   (filter (fn [r]
-                         (not (some-> r :properties :transit-path))) rands)
-        shared (->> rands
-                    (filter (fn [r] (or (some-> r :properties :shared)
-                                        (= (r :id) "document"))))
-                    (map (fn [r]
-                           (assoc r :availability (-> r :properties :shared-avail))))
-                    (map shrink-icon))]
-    ;;reverse order to ensure we don't skip time!
-    (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
-           (ces/load-czml! (->czml-packets "moves" pres #_rands) :id :current)
-           :done)))
 
 (defn ^js/Cesium.DataSourceCollection
   get-layers! [& {:keys [id] :or {id :current}}]
@@ -519,9 +569,10 @@
 (defn daily-stats [t]
   (if (@app-state :closure-trends)
     (get-in @app-state [:closure-trends :trends t])
-    (let [{:strs [pax equipment]}  (get @app-state :entities)]
-      #js[#js{:c-day t :trend "equipment" :value (count (present-on-day t equipment))}
-          #js{:c-day t :trend "pax"       :value (count (present-on-day t pax))}])))
+    (let [{:strs [pax equipment]}  (get @app-state :entities)
+          counts  (get @app-state :move-counts {})]
+      #js[#js{:c-day t :trend "equipment" :value (util/precision (/ (count (present-on-day t equipment)) (counts "equipment")) 4)}
+          #js{:c-day t :trend "pax"       :value (util/precision (/ (count (present-on-day t pax))       (counts "pax")) 4)}])))
 
 
 (defn daily-ltn-stats [t]
@@ -544,15 +595,13 @@
   (swap! app-state dissoc :entities)
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
-  (v/rewind-samples! :flow-plot-view "c-day" 0)
+  #_(v/rewind-samples! :flow-plot-view "c-day" 0)
+  (v/clear-data! :flow-plot-view)
   (v/push-extents! :flow-plot-view  0 1)
-  (v/rewind-samples! :ltn-plot-view "c-day" 0)
+#_  (v/rewind-samples! :ltn-plot-view "c-day" 0)
+  (v/clear-data! :ltn-plot-view)
   (v/push-extents! :ltn-plot-view  0 1)
   (set-day! 0))
-
-(defn random-moves! []
-  (p/do! (timed-random-moves!)
-         (derive-movement-stats!)))
 
 (defn set-finish! [start stop]
   (set! (.-startTime shared-clock) +now+)
@@ -563,6 +612,45 @@
   (v/push-extents! :flow-plot-view start stop)
   (v/push-extents! :ltn-plot-view start stop)
   (v/push-samples! :ltn-plot-view #js[#js{:c-day start :trend "ltn" :value 0}]))
+
+(defn timed-random-moves! []
+  (let [tmax (atom 0)
+        time-gen (fn [start]
+                   (let [duration (rand-int (get @app-state :random-move-length 180))
+                         tstart   (add-days start duration)
+                         origin->poe  (rand-nth (range 1 11))
+                         poe->pod     (rand-nth (range 3 30))
+                         total       (+ origin->poe poe->pod duration)
+                         _ (swap! tmax max total)]
+                     {:tstart tstart
+                      :origin->poe origin->poe
+                      :poe->pod poe->pod}))
+        rands  (random-movements +now+ (get @app-state :random-move-count 500) time-gen)
+        mtype  (comp :move-type :properties)
+        counts (->> rands
+                    (filter (fn [e]
+                              (and (mtype e)
+                                   (not (s/includes? (e :id) "_static")))))
+                    (group-by mtype)
+                    (reduce-kv (fn [acc k v] (assoc acc k (count v))) {}))
+        _      (swap! app-state assoc :move-counts counts)
+        pres   (filter (fn [r]
+                         (not (some-> r :properties :transit-path))) rands)
+        shared (->> rands
+                    (filter (fn [r] (or (some-> r :properties :shared)
+                                        (= (r :id) "document"))))
+                    (map (fn [r]
+                           (assoc r :availability (-> r :properties :shared-avail))))
+                    (map shrink-icon))]
+    ;;reverse order to ensure we don't skip time!
+    (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
+           (ces/load-czml! (->czml-packets "moves" pres #_rands) :id :current)
+           (set-finish! 0 @tmax)
+           :done)))
+
+(defn random-moves! []
+  (p/do! (timed-random-moves!)
+         (derive-movement-stats!)))
 
 (defn timed-entity-moves! [emoves]
   (let [moves  (mapcat entity-move emoves)
@@ -940,3 +1028,41 @@
                      (v/rewind-samples! :ltn-plot-view "c-day" newt))
                  (do (v/push-samples! :flow-plot-view (daily-stats newt))
                      (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
+
+
+;; (defn static-line [e]
+;;   (and (s/includes? (.-_id e) "_static")))
+
+;; (defn value [x]
+;;   (some-> x .getValue))
+
+;; (defn color->material [color]
+;;   (let [material (js/Cesium.Material.fromType "Color")
+;;         _         (set! (.-color (.-uniforms material)) color)]
+;;     material))
+
+;; (defn line->values [poly]
+;;   #js{:positions (value (aget poly "positions"))
+;;       :width     (value (aget poly "width"))
+;;       :material  (-> (value (aget poly "material")) .-color color->material)
+;;       :arcType   (value (aget poly "arcType"))})
+
+;; (defn cache-pax-lines []
+;;   (let [lines (js/Cesium.PolylineCollection.)
+;;         static-pax (filter static-line (get (get @app-state :entities) "pax"))]
+;;     (doseq [p static-pax]
+;;       (.add lines (line->values (.-_polyline p))))
+;;     lines))
+
+;; (defn cache-eq-lines []
+;;   (let [lines (js/Cesium.PolylineCollection.)
+;;         static-pax  (filter static-line (get (get @app-state :entities) "equipment"))]
+;;     (doseq [p static-pax]
+;;       (.add lines (line->values (.-_polyline p))))
+;;     lines))
+
+;; (defn cache-on! []
+;;   (doseq [e (filter static-line (get (get @app-state :entities) "equipment"))] (set! (.-_show e) false))
+;;   (ces/add-primitive! (cache-eq-lines))
+;;   (doseq [e (filter static-line (get (get @app-state :entities) "pax"))] (set! (.-_show e) false))
+;;   (ces/add-primitive! (cache-pax-lines)))

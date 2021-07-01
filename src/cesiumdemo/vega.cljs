@@ -148,7 +148,7 @@
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"
                    }
-       :title {:text "% Closures By C-Day"
+       :title {:text "Unit Closures By C-Date (%)"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
@@ -163,7 +163,7 @@
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
-                                 :axis {:title "% Moves Closed"
+                                 :axis {:title "Unit   Movement"
                                         :titleFontSize 22}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
@@ -198,7 +198,7 @@
        "autosize" {"type" "pad",
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"}
-       :title {:text "%Late To Need"
+       :title {:text "Late-to-Need ULNs"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
@@ -212,7 +212,7 @@
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
-                                 :axis {:title "% Late Arrival"
+                                 :axis {:title "Units Late-to-Need"
                                         :titleFontSize 22}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
@@ -381,7 +381,8 @@
 (defn clear-data! [plot-name]
   (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))
         ]
-    (.data vw "table" nil)))
+    (.data vw "table" nil)
+    (.run vw)))
 
 (defn push-signals! [plot-name sig-val]
   (let [vw (or (some-> @charts (get plot-name) .-view) (throw (ex-info "unknown plot!" {:name plot-name})))]

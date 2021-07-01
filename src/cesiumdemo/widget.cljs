@@ -155,3 +155,24 @@
     (.add  (.-dataSources v)
            p)
     p))
+
+(defn add-primitive! [prim & {:keys [id] :or {id :current}}]
+  (let [v (get-view id)
+        scene (.-scene v)
+        primitives (.-primitives scene)]
+    (.add primitives prim)))
+
+(defn set-quality! [quality & {:keys [low-res-percent id]
+                                 :or {low-res-percent 0.7
+                                      id :current}}]
+  (let [v     (get-view id)
+        scene (.-scene v)
+        low-quality (case quality :low true false)]
+    (set! (.-resolutionScale v)  (if low-quality low-res-percent 1.0))
+    (set! (.-fxaa scene)   (not low-quality))
+    (set! (.-sunBloom scene) (not low-quality))
+    (set! (.-show (.-skyAtmosphere scene)) (not low-quality))
+    (set! (.-enabled (.-fog scene)) (not low-quality))
+    (set! (.-shadows v) (not low-quality))
+    (set! (.-terrainShadows v) (not low-quality))
+    (set! (.-enabled (.-shadowMap scene)) (not low-quality))))
