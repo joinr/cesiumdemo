@@ -27,9 +27,15 @@
              :ltn           [208, 217, 247 255]})
 
 (def color-schemes
-  {:red    {:colors {:equipment [255 0 0 125]}}
-   :orange {:colors {:equipment [255, 165, 0, 125]}}
-   :green  {:colors {:equipment [181 230 29 125]}}})
+  {:red          {:colors {:equipment [255 0 0 125]}}
+   :orange       {:colors {:equipment [255, 165, 0, 125]}}
+   :green        {:colors {:equipment [181 230 29 125]}}
+   :red-trans    {:colors {:equipment [255 0 0 50]
+                           :pax       [0, 59, 255  50]}}
+   :orange-trans {:colors {:equipment [255, 165, 0, 50]
+                           :pax       [0, 59, 255 50]}}
+   :green-trans  {:colors {:equipment [181 230 29 50]
+                           :pax       [0, 59, 255 50]}}})
 
 (def default-state {:transit-jitter     [2 2 0]
                     :destination-jitter [2.5 2.5 0]
@@ -443,6 +449,11 @@
       r)
     r))
 
+(defn shrink-point [r]
+  (if (r :point)
+    (-> r (update :point assoc :outlineWidth 1 :pixelSize 1))
+    r))
+
 (def ger [11.430040468408205	49.80008750153199 10000])
 (def nor [0.3138532  49.0677708 10000])
 (def brest [-4.4860088 48.3905283 10000])
@@ -641,7 +652,8 @@
                                         (= (r :id) "document"))))
                     (map (fn [r]
                            (assoc r :availability (-> r :properties :shared-avail))))
-                    (map shrink-icon))]
+                    (map shrink-icon)
+                    (map shrink-point))]
     ;;reverse order to ensure we don't skip time!
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
            (ces/load-czml! (->czml-packets "moves" pres #_rands) :id :current)
@@ -665,7 +677,8 @@
                                         (= (get r :id) "document"))))
                     (map (fn [r]
                            (assoc r :availability (-> r :properties :shared-avail))))
-                    (map shrink-icon))]
+                    (map shrink-icon)
+                    (map shrink-point))]
     ;;reverse order to ensure we don't skip time!
     (p/do! (ces/load-czml! (->czml-packets "moves" shared) :id :inset)
            (ces/load-czml! (->czml-packets "moves" pres  ) :id :current)
@@ -848,7 +861,11 @@
                {:default :orange
                 :red     :red
                 :orange  :orange
-                :green   :green}
+                :green   :green
+                :red-trans    :red-trans
+                :orange-trans :orange-trans
+                :green-trans  :green-trans
+                }
                :on-change #(change-color-scheme! %)))
 
 (defn layout-options []

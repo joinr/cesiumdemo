@@ -174,6 +174,7 @@
                                       :legend  {:direction "horizontal"
                                                 :orient "bottom"
                                                 :layout {:bottom {:anchor "middle"}}
+                                                :labelExpr "{'equipment': 'Equipment STons'}[datum.label]"
                                                 :labelFontSize 16
                                                 :symbolSize 200
                                                 :title nil}}
@@ -223,6 +224,7 @@
                                      :legend  {:direction "horizontal"
                                                :orient "bottom"
                                                :layout {:bottom {:anchor "middle"}}
+                                               :labelExpr "{'ltn': 'Late-to-Need'}[datum.label]"
                                                :labelFontSize 16
                                                :symbolSize 200
                                                :title nil}}
