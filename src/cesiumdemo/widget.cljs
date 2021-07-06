@@ -162,6 +162,12 @@
         primitives (.-primitives scene)]
     (.add primitives prim)))
 
+(defn remove-primitive! [prim & {:keys [id] :or {id :current}}]
+  (let [v (get-view id)
+        scene (.-scene v)
+        primitives (.-primitives scene)]
+    (.remove primitives prim)))
+
 (defn set-quality! [quality & {:keys [low-res-percent id]
                                  :or {low-res-percent 0.7
                                       id :current}}]

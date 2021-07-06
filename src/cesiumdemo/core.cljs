@@ -13,6 +13,7 @@
    [cesiumdemo.time :as time :refer [->jd add-days iso-str interval]]
    [cesiumdemo.util :as util]
    [cesiumdemo.czml :as czml]
+   [cesiumdemo.linecache :as lc]
    [promesa.core :as p]
    [clojure.string :as s]))
 
@@ -601,9 +602,52 @@
   (swap! app-state assoc :entities (registered-moves)))
 
 
+(defn static-line [e]
+  (and (s/includes? (.-_id e) "_static")))
+
+(defn cache-line [pc pline]
+  (let [av     (.-availability pline)
+        start  (.-start av)
+        stop   (.-stop  av)
+        dt     (js/Cesium.JulianDate.daysDifference  stop start)
+        cstart (js/Cesium.JulianDate.daysDifference start (time/-julian +now+))]
+    (lc/add-line! pc pline cstart (+ cstart dt))))
+
+(defn cache-lines [ls]
+  (let [pc (lc/new-cache)]
+    (reduce cache-line pc ls)))
+
+(defn cache-pax-lines []
+  (cache-lines (filter static-line (get (get @app-state :entities) "pax"))))
+
+(defn cache-eq-lines []
+  (cache-lines  (filter static-line (get (get @app-state :entities) "equipment"))))
+
+(defn cache-on! []
+  (let [pcache (cache-pax-lines)
+        ecache (cache-eq-lines)]
+    (doseq [e (filter static-line (get (get @app-state :entities) "equipment"))]
+      (set! (.-_show e) false))
+    (ces/add-primitive! (get ecache :lines))
+    (doseq [e (filter static-line (get (get @app-state :entities) "pax"))] (set! (.-_show e) false))
+    (ces/add-primitive! (get pcache :lines))
+    (add-watch c-day :ecache (fn [_ _ told tnew] (lc/show ecache tnew)))
+    (add-watch c-day :pcache (fn [_ _ told tnew] (lc/show pcache tnew)))
+    (swap! app-state assoc :pcache pcache :ecache ecache)))
+
+(defn clear-caches! []
+  (when-let [ecache (get @app-state :ecache)]
+    (remove-watch c-day :ecache)
+    (ces/remove-primitive! (get ecache :lines)))
+  (when-let [pcache (get @app-state :pcache)]
+    (remove-watch c-day :pcache)
+    (ces/remove-primitive! (get pcache :lines)))
+  (swap! app-state dissoc :ecache :pcache))
+
 (defn clear-moves! []
   (stop!)
   (swap! app-state dissoc :entities)
+  (clear-caches!)
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
   #_(v/rewind-samples! :flow-plot-view "c-day" 0)
@@ -1046,40 +1090,3 @@
                  (do (v/push-samples! :flow-plot-view (daily-stats newt))
                      (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
 
-
-;; (defn static-line [e]
-;;   (and (s/includes? (.-_id e) "_static")))
-
-;; (defn value [x]
-;;   (some-> x .getValue))
-
-;; (defn color->material [color]
-;;   (let [material (js/Cesium.Material.fromType "Color")
-;;         _         (set! (.-color (.-uniforms material)) color)]
-;;     material))
-
-;; (defn line->values [poly]
-;;   #js{:positions (value (aget poly "positions"))
-;;       :width     (value (aget poly "width"))
-;;       :material  (-> (value (aget poly "material")) .-color color->material)
-;;       :arcType   (value (aget poly "arcType"))})
-
-;; (defn cache-pax-lines []
-;;   (let [lines (js/Cesium.PolylineCollection.)
-;;         static-pax (filter static-line (get (get @app-state :entities) "pax"))]
-;;     (doseq [p static-pax]
-;;       (.add lines (line->values (.-_polyline p))))
-;;     lines))
-
-;; (defn cache-eq-lines []
-;;   (let [lines (js/Cesium.PolylineCollection.)
-;;         static-pax  (filter static-line (get (get @app-state :entities) "equipment"))]
-;;     (doseq [p static-pax]
-;;       (.add lines (line->values (.-_polyline p))))
-;;     lines))
-
-;; (defn cache-on! []
-;;   (doseq [e (filter static-line (get (get @app-state :entities) "equipment"))] (set! (.-_show e) false))
-;;   (ces/add-primitive! (cache-eq-lines))
-;;   (doseq [e (filter static-line (get (get @app-state :entities) "pax"))] (set! (.-_show e) false))
-;;   (ces/add-primitive! (cache-pax-lines)))
