@@ -143,14 +143,16 @@
 (defn geo->lat-long [geo]
   (some-> geo ea/geo->location (select-keys [:lat :long])))
 
-(defn move->visual-move [uic {:keys [tstart ALD LAD CRD RDD  ORIG_GEO POE_GEO POD_GEO PAX TOTAL_STONS]}]
+(defn move->visual-move [id uic
+                         {:keys [tstart ALD LAD CRD RDD  ORIG_GEO POE_GEO POD_GEO PAX TOTAL_STONS]}]
   (let [start  (geo->lat-long ORIG_GEO)
         middle (geo->lat-long POE_GEO)
         dest   (geo->lat-long POD_GEO)
         origin->poe (- ALD 10)
         dstop    (- RDD tstart)
         dtransit (- ALD tstart)]
-    {:id       uic
+    {:id       id
+     :uic      uic
      :start    [(start  :long) (start  :lat)  300000]
      :transit  [(middle :long) (middle :lat)  100000]
      :dest     [(dest   :long) (dest   :lat)  10000]
@@ -165,7 +167,7 @@
 
 (defn entity->visual-moves [{:keys [UIC SRC COMPO PATCH ICON moves]}]
   (for [[i m] (map-indexed vector moves)]
-    (-> (move->visual-move (str UIC "-" i) m )
+    (-> (move->visual-move (str UIC "-" i) UIC m)
         (assoc :src SRC :compo COMPO :patch PATCH :icon ICON))))
 
 (defn read-visual-moves [txt]
@@ -269,10 +271,10 @@
 ;;group-by uic, since delays will be assumably a subset.
 
 (defn cumulative-ltn-trends [emoves]
-  (let [total-units (->> emoves (map :id)  distinct count)
+  (let [total-units (->> emoves (map :uic)  distinct count)
         late-units (->> emoves
                         (filter (comp pos? :delay))
-                        (group-by :id))
+                        (group-by :uic))
         total-late (count late-units)
         unit-finals (for [[uic moves] late-units]
                       (let [{:keys [cstop delay]} (->> moves (sort-by (comp - :cstop)) first)]
