@@ -233,6 +233,39 @@
                              :fill  (js/Cesium.Color.GREY.withAlpha 1.0),
                              :strokeWidth 3}))
 
+(defn contest [id cstart [lng lat height] & {:keys [image scale] :or {image "/icons/redstar.png" scale 1.0}}]
+  (let [tstart    (time/add-days +now+ cstart)
+        tstopmove (time/add-days +now+ (+ cstart 10))]
+    {:id   id
+     :name      (str "contest-" id)
+     :billboard {:image       image
+                 :scale       scale
+                 :eyeOffset   {:cartesian [0 0 -10000]}
+                 :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}
+                 :color       {:rgbaf [1.0, 1.0, 1.0, 0.5]}}
+     :position {:cartographicDegrees [(time/-julian tstart)    lng lat (* 0.8  height)
+                                      (time/-julian tstopmove) lng lat height]
+                :interpolationAlgorithm "LINEAR",
+                :interpolationDegree    1}
+     :availability (time/interval tstart  tstopmove)
+     :properties {:billboard-type "contest"}}))
+
+;;expect
+;;[id cstart coords  & {:keys [image] :or {image "/icons/redstar.png"}}]
+(defn contests []
+  (when-let [xs (get @app-state :contests)]
+    (some->> xs
+             (map (fn [{:keys [id cstart coords image scale]
+                        :or {image "/icons/redstar.png" scale 1.0}}]
+                    (contest id cstart coords :image image :scale scale)))
+             (->czml-packets "contests")
+             (ces/load-czml!))))
+
+(defn random-contests! []
+  (swap! app-state assoc :contests
+         [{:id "contest-1" :cstart 20  :coords [-94.090979 30.078809 1000000] :scale 0.05}
+          {:id "contest-2" :cstart 100 :coords [-92.54034189 31.33467326 1000000] :scale 0.05}]))
+
 ;;need to define movements.
 ;;So an entity will show up and start moving.
 ;;This also implies a movement path.
