@@ -152,19 +152,22 @@
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
-                {:name "lineColor" :value "#ffa500"}]
+                {:name "lineColor" :value "#ffa500"}
+                {:name "ruleColor" :value "rgba(255,255,255,1)"}]
        :data    {:name "table"
                  :transform [{:filter "datum.trend = 'equipment'"}
                              ]},
        :layer [{:mark "line",
                 :encoding  {:x  {:field "c-day" :type "quantitative"
                                  :axis {:title "C-Day"
-                                        :titleFontSize 22}
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
                                  :axis {:title "Unit   Movement"
-                                        :titleFontSize 22}
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
                              :color  {:field "trend",
@@ -186,9 +189,9 @@
                                   :type "quantitative"
                                   :scale {:domain [0.0 1.0]} }
                            :size {:value 5},
-                           :color {:value {:expr "lineColor"}}
+                           :color {:value {:expr "ruleColor"}}
                            :strokeCap {:value "square"}
-                           :opacity {:value 0.65}
+                           :opacity {:value 0.35 #_0.65}
                            }
                 }]}
       (merge dark-theme)
@@ -203,18 +206,21 @@
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
-                {:name "lineColor" :value "#5effff"}]
+                {:name "lineColor" :value "#5effff"}
+                {:name "ruleColor" :value "rgba(255,255,255,1)"}]
        :data
        {:name "table"},
        :layer [{:mark "line",
                 :encoding  {:x  {:field "c-day" :type "quantitative"
                                  :axis {:title "C-Day"
-                                        :titleFontSize 22}
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
                                  :axis {:title "Units Late-to-Need"
-                                        :titleFontSize 22}
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
                             :color  {:field "trend",
@@ -237,8 +243,8 @@
                                   :scale {:domain [0.0 1.0]} }
                            :size {:value 5}
                            :strokeCap {:value "square"}
-                           :opacity {:value 0.65}
-                           :color {:value {:expr "lineColor"}}
+                           :opacity {:value 0.35}
+                           :color {:value {:expr "ruleColor"}}
                            }}]}
       (merge dark-theme)
       #_clj->js))
