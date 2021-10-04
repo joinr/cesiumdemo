@@ -75,6 +75,13 @@ Performance seems best with Edge and Chrome.  Firefox webgl rendering isn't as g
 
 Click the "demo" button on the bottom for a demonstration with random data and a default color scheme.
 
+* ScreenShots
+
+[[shot1.jpg][Default View]]
+[[shot2.jpg][Demo]]
+[[shot3.jpg][Stacked View]]
+
+
 * Interesting Notes
 
 As a learning project that evolved into a useful visualization, this repository represents several
