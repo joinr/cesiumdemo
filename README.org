@@ -1,7 +1,10 @@
-* cesiumdemo
+* Cesiumdemo
 
 An exploration of the cesiumjs api from clojurescript.  Working prototype visualizing
-entities moving around, doing some realtime plotting with vega as well.
+entities moving around, doing some realtime plotting with vega as well.  Evolved into a 
+responsive single page application with local data processing (client brings their own data), 
+and dynamic visuals.  Research software.  Designed to run offline or as hosted self-contained
+static website.
 
 ** PreRequisites
 For the SPA to render correctly (e.g. for the globe GIS layers), you need to have some local layers installed
@@ -72,4 +75,49 @@ Performance seems best with Edge and Chrome.  Firefox webgl rendering isn't as g
 
 Click the "demo" button on the bottom for a demonstration with random data and a default color scheme.
 
+* Interesting Notes
 
+As a learning project that evolved into a useful visualization, this repository represents several
+minor accomplishments (for me) and perhaps is a roadmap for others.
+
+** Cesium
+I ended up wrapping quite a bit of the underlying cesium API, primarily the CZML, datetime, layers, and other
+stuff. I started with the Entity API and ended up focusing more on CZML since it fit the clojure/cljs data 
+first approach.  There is likely a cljs library to evolve from this, given time and interest.
+
+** Reactive Vega
+One of the requirements was a reactive chart or charts synchronized with the GIS animation.  This presented
+some interesting challenges, although VEGA was largely up to the task.  I similarly wrapped (and leveraged
+some community wrappers for generting schemas) quite a bit of Vega, to include plumbing out the underlying
+view API and leveraging signals and hooks to supply information to the charts.  This ended up being 
+pretty elegant in cljs, allowing a nice degree of control over the otherwise "static" information the 
+declarative VEGA schemes tend to present.  We can turn changes from events into a clojure sequences and
+project them into changesets for the various charts, for instance.  From there it's a matter of wiring 
+and communication (which reagent handles nicely).
+
+** CSV parsing / data processing
+I had to do some browser-based work with CSV.  Previously, I just used a port of my own stuff from SPORK, 
+but this time I went with the clojure ecosystem.  Semantic-CSV is pretty nice in this regard, although 
+the parser from cljs.csv requires you to autodetect crlf or lf.  The parser included with google's closure
+library worked out of the box.
+
+** Discrete Event Sampling / Temporal Sampling
+
+One of the things that popped up was reading a lot of discrete temporal data (events of tstart tstop) and 
+querying them over constant samplying frequency.  I had a library to do this (again a piece of SPORK), but
+decided to see what cljs had out there.  The library from helins, interval.cljc, worked great.  There was
+a minor caveat with the range queries being exclusive instead of inclusive over the end points of intervals
+but that was trivially worked around.  Overall, a very nice experience available out of the box.
+
+** Responsive Design
+I ended up iterating with layout, sizing, UI, etc. many times with the sponsor.  This was my first
+real foray into using CSS and leveraging flexbox.  I think the combination of reagent / flexbox is 
+plus responsive components is an excellent way to design flexible frontends for little apps.
+
+** cljs-bean
+
+Trying to introspect objects from the CLJS repl (where I like to live) and reference their docs from official
+references is rough in vanilla cljs.  Thankfully, cljs-bean helps you wrap anything in a map-like 
+object that includes keys for properties and methods.  This is great for dissecting and exploring 
+JS datastructures, as well as uncovering the incantations for efficient interop calls as you walk
+though a foreign API.  Excellent library.
