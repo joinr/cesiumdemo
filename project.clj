@@ -7,7 +7,6 @@
                  [cljsjs/vega-embed "6.14.2-0"]
                  [metosin/vega-tools "0.2.0"]
                  [funcool/promesa "6.0.1"]
-                 [org.clojure/core.async "1.3.618"]
                  [testdouble/clojurescript.csv "0.5.1"]
                  [semantic-csv "0.2.1-alpha1"]
                  #_[lambdaisland/fetch "1.0.33"]

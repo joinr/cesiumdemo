@@ -1,0 +1,75 @@
+* cesiumdemo
+
+An exploration of the cesiumjs api from clojurescript.  Working prototype visualizing
+entities moving around, doing some realtime plotting with vega as well.
+
+** PreRequisites
+For the SPA to render correctly (e.g. for the globe GIS layers), you need to have some local layers installed
+in the /resources/public/layers directory.
+
+This is basically static imagery for map tiles.  There are two default layers we link to / expect since this
+app is designed for offline / hosted usage.  They can be downloaded from:
+
+https://clusterfiles.s3-us-gov-west-1.amazonaws.com/layers.zip
+
+The archive is about 150mb and contains a single folder /layers, which can be extracted or copied to
+/resources/public .
+
+Technically, the only layers used in the default app are the Blue Marble tileset, with the Bing tiles
+as optional.  
+
+
+** Development Mode
+
+*** Run application:
+
+#+BEGIN_SRC clojure
+lein clean
+lein fig -- --build dev --repl
+#+END_SRC
+
+
+Figwheel will automatically push cljs changes to the browser.
+
+Wait a bit, then browse to [http://localhost:9500](http://localhost:9500).
+
+** Production Build
+
+[I have only dev'd with unminified, raw code due to this being a locally hosted app.
+ Mileage may vary, particular with using external libs directly...]
+
+#+BEGIN_SRC clojure
+lein clean
+lein cljsbuild once min
+#+END_SRC
+
+** Deployment as a static site
+
+The production files (after the js is compiled from cljs per lein figwheel or lein cljsbuild)
+can be copied to any hosting service (e.g. an S3 bucket) and viewed from there.  
+
+Alternately, you can run the project locally (assuming you have the repository, clojure, leiningen,
+and the layers mentioned) via the built-in simple webserver lein provides. I could (but have not)
+bundle the whole thing as an uberjar where -main simply starts the webserver and serves up files.
+Any simple webserver (e.g. node.js, python, java, etc.) can merely serve the files at /resources/public 
+and everything should work fine (resources are all relative to web root, and designed for offline use).
+
+For windows users, there is a simple powershell webserver that serves static files 
+in /resources/public/server.ps1 .
+
+* Live Demo
+
+There is a live version running at http://cesiumdemo.s3-website-us-gov-west-1.amazonaws.com/ .
+Note: there are a decent amount of resources (namely the map layers, but also unminified javascript)
+that may take a bit to download on first load.  Later loads should be cached though.
+
+On load, there will be a default horizontal display.  You should see a control panel at the bottom; if you
+do not, you may need to zoom out the browser settings (typically ctrl + or ctrl -).  The view should
+stretch/shink to accomodate window size as well, primarily dictated by the horizonal width of the browser.
+So you can also reorient things if they are missing by resizing the browser window a bit.
+
+Performance seems best with Edge and Chrome.  Firefox webgl rendering isn't as good (but passable).
+
+Click the "demo" button on the bottom for a demonstration with random data and a default color scheme.
+
+
