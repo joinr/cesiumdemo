@@ -29,11 +29,11 @@
 
 (def patch-path
   (memoize (fn [p]
-             (ensure-jpg (str "/icons/patches/" p)))))
+             (ensure-jpg (str "icons/patches/" #_"/icons/patches/" p)))))
 
 (def icon-path
   (memoize (fn [p]
-             (str "/icons/std/" p))))
+             (str "icons/std/" #_"/icons/std/" p))))
 
 (def unit-imagery  (for [{:keys [UIC Patch Icon]} (vals d/units)]
                     {:UIC UIC :Patch (ensure-jpg Patch) :Icon Icon}))
