@@ -6,7 +6,152 @@ responsive single page application with local data processing (client brings the
 and dynamic visuals.  Research software.  Designed to run offline or as hosted self-contained
 static website.
 
-** PreRequisites
+* Pre-Built Releases
+You can download the pre-built static site assets as a single zip file from
+ [[https://clusterfiles.s3-us-gov-west-1.amazonaws.com/tpfdd-demo-full-1.0.zip][link to current release]] .  This includes the necessary imagery layers for local (e.g. offline) 
+geospatial display using Cesium.  Consequently, the download is around 166 mb of inert 
+css, html, js, and imagery.
+
+** Serving / Running:
+   Extract the zip file to a directory of your choice.  This will become the root folder for the site
+   and its associated assets.  From here you can choose how to serve the site locally so that it is
+   accessible from your browser as an SPA.  You can use any webserver from any language available to serve the
+   files on a port of your choosing.
+
+   For convenience and closed network deployment, where we assume that powershell is available,
+   we provide a simple powershell script to serve the content:
+
+   - From powershell, navigate to the root directory where the static site was extracted.
+   - invoke `server.ps1` 
+     
+#+BEGIN_SRC powershell
+PS C:\Users\youraccount\tpfdd-demo> .\server.ps1
+serving files from C:\Users\youraccount\tpfdd-demo
+HTTP Server Ready!
+http://localhost:8080/
+#+END_SRC
+
+   - Leave the powershell window open (the web server will continue running until you close the window).
+     - Alternate methods exist, but for now it's simple.
+   - Open a web browser and navigate to http://localhost:8080/ to see/use the application.
+     - The initial load may take a few seconds (the powershell server isn't particularly fast), but you
+       should see logging information that assets are being loaded and eventually the page will appear.
+   - When finished, close the website or navigate away, close the powershell session (the script will not
+     currently allow breaking / interruption so the session must be closed entirely to kill the process.
+
+* Live Demo
+
+There is a live version running at http://cesiumdemo.s3-website-us-gov-west-1.amazonaws.com/ .
+Note: there are a decent amount of resources (namely the map layers, but also unminified javascript)
+that may take a bit to download on first load.  Later loads should be cached though.
+
+On load, there will be a default horizontal display.  You should see a control panel at the bottom; if you
+do not, you may need to zoom out the browser settings (typically ctrl + or ctrl -).  The view should
+stretch/shink to accomodate window size as well, primarily dictated by the horizonal width of the browser.
+So you can also reorient things if they are missing by resizing the browser window a bit.
+
+Performance seems best with Edge and Chrome.  Firefox webgl rendering isn't as good (but passable).
+
+Click the "demo" button on the bottom for a demonstration with random data and a default color scheme.
+
+* Usage
+The application is designed to provide an interactive rendering of pre-formatted data provided in the form
+of a tab separated value (TSV) text file.  You can find notional samples of the data format in the root 
+directory for the website: 
+
+ - smallmoves.txt depicts a simple use case of a few entities moving around.  Iconography is inferred.
+ - rawmoves.txt   depicts a more complex case of many entities moving around.  Iconography is inferred.
+ - customicondata.txt depicates rawmoves, but with the optional fields PATCH and ICON included.  These fields
+   map to filenames in icons/patches and icons/std respectively and allow user-defined imagery solely by
+   adding requisite files (if any) and mapping them in the input fields.  This particular file sets all of
+   unit icons to "none", which overrides icon inference, and displays small points as entity representations
+   to convey motion.
+
+Assuming we have a corresponding file that we want to visualize, and the application is accessible from our web
+browser (either locally hosted e.g. via powershell or another web server, or accessed from a remote web server
+via a reachable URL), we can use the application to do so.
+
+** Interface(s)
+The application interface can be configured for multiple orientations or layouts of visual elements.  There are 3
+provided by default.  Each one will have two interactive geospatial views: one of the contintental USA, and another
+defaulting to a global view (currently of the northern Atlantic coasts). Users can toggle between orientations using
+the "Page Layout" drop-down box.  This drop down box is an example of one of the 9 user interface elements that remain
+common to every optional layout: 
+
+- Play: intiates animation of the current visualization from the current time.
+- Stop: pauses the animation at the current time.
+- Clear-Moves: clears the currently loaded timeline and resets the views and graphs.
+- Random-Moves: creates a random animation of units moving to random destinations,
+  prepares the animation, waits for Play.
+- Demo: Equivalent to the user clicking Random-Moves and then Play immediately.
+- Browse/File Selection:  Opens a file dialogue, where the user navigates to an input file to load.  Loads timeline
+and entity data, prepares the animation, and waits for Play.
+- Rendering Options: allows some gross control over the visual effects for aesthetics and performance:
+  - No transit icons: hides icons for entities in transit on the global view.
+  - No icons:  hides all icons on the domestic and global views, only entity trails will be rendered.
+  - No jitter: eliminates the random jitter applied to entity movement destination, which normally 
+    aids in preventing overly dense coloring at common points of travel.
+- Color Scheme: allows the user to select a color scheme for the Equipment Movement trends; -trans
+  suffixed colors will have transparent entity trails on the geospatial views, useful for density plots
+  of movement.
+- Page Layout: allows selection of various layouts: 
+  - stacked: a row of 2 even geospatial views (domestic, global), over a row of 2 even plots (closures, LTN),
+             over a legend, over controls.  Good for wide-screen, single-scenario examination.
+
+  - tightly-stacked: designed for narrow columnar screen space, with an emphasis on comparing multiple
+    scenarios side-by-side.  Provides an even vertical distribution of geospatial, closure plot, LTN plot, and
+    controls.  The domestic geospatial view has a small inset of the global transit view.
+    Note that this view is sensitive to the horizonal space and will dynamically resize (perhaps too much).
+    When using this view, it is recommended that you narrow the size of the browser window until all the 
+    visual elements appear correctly, and optionally use zoom-in/zoom-out (typically ctrl-+/- in most
+    browsers) to provide extra control over the visual.
+
+  - overlay: [deprecated / needs work] provides a small geospatial inset, and small plots, overlaying a dominant
+    domestic geospatial view, with overlaid controls on the side.
+
+In addition to the simple controls above, the Cesium library includes a timeline control and its own animation
+control scheme.  This is a live animation that can be immediately sped up, slowed down, fast forwarded, or 
+rewound using the Cesium timeline control on the bottom of the domestic geospatial view in any layout.  The
+Vega plots will react accordingly.
+
+As a final note, the geospatial views provided by Cesium are themselves interactive.  They can be zoomed,
+panned, rotated as a globe.  Users can even dynamically change projections using the globe icon to select
+from 3d, 2.5d, or 2d projections depending on use.  Touch screen devices can similarly pinch-to-zoom and
+use familiar finger controls to manipulate the view.
+
+** Loading A File
+Use the Browse/File Selection button to open a file dialogue.  Navigate to the input file of interest.  Upon
+confirming the selection, the application will load the file and initialize the animation.  The user will
+typically see some change in the current view, particularly a reset of the C-Day indicator and plots and
+icons.  Once the icons, plots, timeline, and views have visibly changed (on the order of less than a second), 
+you are ready to engage.
+
+** Running
+Leveraging the aforementioned controls, press Play to begin the animation.  You should see time unfold 
+as the C-Day indicator changes. The plots will update (showing a vertical marker on their time axis
+indicating progress), and icons should appear in accordance with entity movement.  Entities will
+move across the domestic view, and then shift to the transit view. When the end of recorded
+time is reached, the animation will automatically stop.
+
+Users may Stop the animation at any time and interactive with the geospatial views (or interact
+while the animation is running).  Continue forward by pressing Play.  Use the Cesium animation
+timeline controls to move forward or backward through time interactively.
+
+* ScreenShots
+
+[[shot1.jpg][Default View]]
+[[shot2.jpg][Demo]]
+[[shot3.jpg][Stacked View]]
+
+
+** Development Mode
+
+*** Dev Requirements 
+- Java Virtual Machine >= 8.
+- Leiningen
+- Git (optional, but recommended).
+
+*** Layers
 For the SPA to render correctly (e.g. for the globe GIS layers), you need to have some local layers installed
 in the /resources/public/layers directory.
 
@@ -21,20 +166,25 @@ The archive is about 150mb and contains a single folder /layers, which can be ex
 Technically, the only layers used in the default app are the Blue Marble tileset, with the Bing tiles
 as optional.  
 
+*** Developing from the repository
 
-** Development Mode
+This project is setup to use the leiningen project management tool for
+clojure, and the figwheel-main interactive clojurescript development
+environment for live browser-based application development.  Assuming you
+have Git and have cloned the repository (or simply copied the files...), 
+from the cloned folder:
 
-*** Run application:
+*** Run application with a browser-connected REPL:
 
 #+BEGIN_SRC clojure
 lein clean
 lein fig -- --build dev --repl
 #+END_SRC
 
+Figwheel will automatically push cljs file changes to the browser as you develop.
 
-Figwheel will automatically push cljs changes to the browser.
-
-Wait a bit, then browse to [http://localhost:9500](http://localhost:9500).
+Wait a bit, then browse to [http://localhost:9500](http://localhost:9500) to see
+the live application being served.
 
 ** Production Build
 
@@ -60,26 +210,6 @@ and everything should work fine (resources are all relative to web root, and des
 For windows users, there is a simple powershell webserver that serves static files 
 in /resources/public/server.ps1 .
 
-* Live Demo
-
-There is a live version running at http://cesiumdemo.s3-website-us-gov-west-1.amazonaws.com/ .
-Note: there are a decent amount of resources (namely the map layers, but also unminified javascript)
-that may take a bit to download on first load.  Later loads should be cached though.
-
-On load, there will be a default horizontal display.  You should see a control panel at the bottom; if you
-do not, you may need to zoom out the browser settings (typically ctrl + or ctrl -).  The view should
-stretch/shink to accomodate window size as well, primarily dictated by the horizonal width of the browser.
-So you can also reorient things if they are missing by resizing the browser window a bit.
-
-Performance seems best with Edge and Chrome.  Firefox webgl rendering isn't as good (but passable).
-
-Click the "demo" button on the bottom for a demonstration with random data and a default color scheme.
-
-* ScreenShots
-
-[[shot1.jpg][Default View]]
-[[shot2.jpg][Demo]]
-[[shot3.jpg][Stacked View]]
 
 
 * Interesting Notes
