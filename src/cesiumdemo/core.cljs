@@ -473,13 +473,17 @@
      )))
 
 (defn shrink-icon  [r]
+  r
   (if (r :billboard)
     (case (-> r :properties :billboard-type)
-      "icon"  (update-in r [:billboard :scale] * 0.25)
+      "icon"  (update r :billboard
+                      (fn [{:keys [scale pixelOffset] :as r}]
+                        (assoc r :scale (* 0.5 scale)
+                               :pixelOffset {:cartesian2 [30 0]})))
       "patch" (update r :billboard
                       (fn [{:keys [scale pixelOffset] :as r}]
-                        (assoc r :scale (* 0.25 scale)
-                              :pixelOffset {:cartesian2 [60 0]})))
+                        (assoc r :scale (* 0.5 #_0.25 scale)
+                                #_#_ :pixelOffset {:cartesian2 [-1 #_60 0]})))
       r)
     r))
 
@@ -1085,10 +1089,10 @@
     [:div {:style  {:flex "0.50" :max-width "50%"}}
      [cesium-inset]]]
    [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "95%" :max-width "95%"}}
+    [:div {:style {:flex "1" :width "98%" :max-width "98%"}}
      [v/vega-chart "flow-plot" v/line-equipment-spec]]]
    [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "95%"  :max-width "95%"}}
+    [:div {:style {:flex "1" :width "98%"  :max-width "98%"}}
      [v/vega-chart "pax-plot" v/line-pax-spec]]]
    [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
@@ -1163,7 +1167,11 @@
              (fn [k r oldt newt]
                (if (< newt oldt)
                  (do (v/rewind-samples! :flow-plot-view "c-day" newt)
+                     (v/rewind-samples! :pax-plot-view "c-day" newt)
                      (v/rewind-samples! :ltn-plot-view "c-day" newt))
-                 (do (v/push-samples! :flow-plot-view (daily-stats newt))
-                     (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
+                 (let [dstats (daily-stats newt)]
+                   (when dstats
+                     (v/push-samples! :flow-plot-view dstats)
+                     (v/push-samples! :pax-plot-view  (.filter  dstats (fn [arr] (= (.-trend arr) "pax")))))
+                   (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
 

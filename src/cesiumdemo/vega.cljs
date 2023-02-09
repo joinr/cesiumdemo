@@ -148,7 +148,7 @@
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"
                    }
-       :title {:text "Unit Closures By C-Date (%)"
+       :title {:text "Equipment Closures By C-Date (%)"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
@@ -203,7 +203,7 @@
                    "resize" true ;;maybe revisit this.
                    "contains" "padding"
                    }
-       :title {:text "Unit Closures By C-Date (%)"
+       :title {:text "Personnel Closures By C-Date (%)"
                :fontSize 22}
        :params [{:name "xmin", :value 0}
                 {:name "xmax", :value 1}
