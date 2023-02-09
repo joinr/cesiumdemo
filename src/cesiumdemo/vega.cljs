@@ -194,8 +194,62 @@
                            :opacity {:value 0.35 #_0.65}
                            }
                 }]}
-      (merge dark-theme)
-      #_clj->js))
+      (merge dark-theme)))
+
+(def line-pax-spec
+  (-> {:width "container" :height 100;;:width 600, :height 200,
+       "autosize" {
+                   "type" "pad",
+                   "resize" true ;;maybe revisit this.
+                   "contains" "padding"
+                   }
+       :title {:text "Unit Closures By C-Date (%)"
+               :fontSize 22}
+       :params [{:name "xmin", :value 0}
+                {:name "xmax", :value 1}
+                {:name "lineColor" :value "#003cff"}
+                {:name "ruleColor" :value "rgba(255,255,255,1)"}]
+       :data    {:name "table"
+                 :transform [{:filter "datum.trend = 'pax'"}
+                             ]},
+       :layer [{:mark "line",
+                :encoding  {:x  {:field "c-day" :type "quantitative"
+                                 :axis {:title "C-Day"
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
+                                 :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
+                                         :nice false}},
+                            :y  {:field "value"
+                                 :axis {:title "Unit   Movement"
+                                        :titleFontSize 22
+                                        :labelFontSize 16}
+                                 :type "quantitative"
+                                 :scale {:domain [0.0 1.0]}},
+                             :color  {:field "trend",
+                                      :type "nominal"
+                                      :scale  {:domain ["pax"]
+                                               :range  [{:expr "lineColor"}]}
+                                      :legend  {:direction "horizontal"
+                                                :orient "bottom"
+                                                :layout {:bottom {:anchor "middle"}}
+                                                :labelExpr "{'pax': 'Personnel Pax'}[datum.label]"
+                                                :labelFontSize 16
+                                                :symbolSize 200
+                                                :title nil}}
+                            :size {:value 5}}}
+               {:mark "rule",
+                :encoding {:x    {:field "c-day" :aggregate "max"}
+                           :y    {:datum 0}
+                           :y2   {:field "value" :aggregate "max"
+                                  :type "quantitative"
+                                  :scale {:domain [0.0 1.0]} }
+                           :size {:value 5},
+                           :color {:value {:expr "ruleColor"}}
+                           :strokeCap {:value "square"}
+                           :opacity {:value 0.35 #_0.65}
+                           }
+                }]}
+      (merge dark-theme)))
 
 (def ltn-spec
   (-> {:width "container" :height 100;;:width 600, :height 200,

@@ -23,9 +23,9 @@
              "Army Guard"   [192 192 192 255]
              "Army Reserve" [192 192 192 255]
              "AF Active"    [0   0   0   255]
-             :pax           [0, 59, 255  125] #_[0, 242, 255 125]  #_[255 0 0 125]
+             :pax           [0, 59, 255  125]
              :equipment     [255, 165, 0, 125]
-             :ltn           [208, 217, 247 255]})
+             :ltn           [208, 217, 247 255] })
 
 (def color-schemes
   {:red          {:colors {:equipment [255 0 0 125]}}
@@ -614,6 +614,7 @@
 (defn daily-stats [t]
   (if (@app-state :closure-trends)
     (get-in @app-state [:closure-trends :trends t])
+    ;;obviated, also maybe not performant doing in-memory queries...
     (let [{:strs [pax equipment]}  (get @app-state :entities)
           counts  (get @app-state :move-counts {})]
       #js[#js{:c-day t :trend "equipment" :value (util/precision (/ (count (present-on-day t equipment)) (counts "equipment")) 4)}
@@ -686,6 +687,8 @@
   #_(v/rewind-samples! :flow-plot-view "c-day" 0)
   (v/clear-data! :flow-plot-view)
   (v/push-extents! :flow-plot-view  0 1)
+  (v/clear-data! :pax-plot-view)
+  (v/push-extents! :pax-plot-view  0 1)
 #_  (v/rewind-samples! :ltn-plot-view "c-day" 0)
   (v/clear-data! :ltn-plot-view)
   (v/push-extents! :ltn-plot-view  0 1)
@@ -698,6 +701,7 @@
   (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)
   (swap! app-state assoc :extents [start stop])
   (v/push-extents! :flow-plot-view start stop)
+  (v/push-extents! :pax-plot-view start stop)
   (v/push-extents! :ltn-plot-view start stop)
   (v/push-samples! :ltn-plot-view #js[#js{:c-day start :trend "ltn" :value 0}]))
 
@@ -949,8 +953,19 @@
   (->drop-down "Page Layout" "pagelayout"
     {:stacked :stacked
      :overlay :overlay
-     :tightly-stacked :tightly-stacked}
+     :tightly-stacked :tightly-stacked
+     :fvs  :fvs}
     :on-change #(swap! app-state assoc :layout % :layout-changed true)))
+
+(defn demo-click []
+  (p/do! (println "loading moves")
+         (random-moves!)
+         (println "done")
+         (println "loading-images")
+         (when-not (@app-state :loaded)(p/delay 2000))
+         (swap! app-state assoc :loaded true)
+         (println "done")
+         (play!)))
 
 (defn overlay-page [ratom]
   [:div
@@ -968,15 +983,7 @@
       "clear-moves"]
      [:button.cesium-button {:style {:display "block"} :id "random-moves" :type "button" :on-click #(random-moves!)}
       "random-moves"]]
-    [:button.cesium-button {:style {:display "block"} :id "demo" :type "button" :on-click
-                            #(p/do! (println "loading moves")
-                                    (random-moves!)
-                                    (println "done")
-                                    (println "loading-images")
-                                    (when-not (@app-state :loaded)(p/delay 2000))
-                                    (swap! app-state assoc :loaded true)
-                                    (println "done")
-                                    (play!))}
+    [:button.cesium-button {:style {:display "block"} :id "demo" :type "button" :on-click  demo-click}
      "demo"]
     [file-input]
     [visual-options]
@@ -1008,10 +1015,10 @@
     [:div {:style  {:flex "0.50" :max-width "50%"}}
      [cesium-inset]]]
    [:div {:id "chart-root" :style {#_#_:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "45%"}}
+    [:div {:style {:flex "0.48" :max-width "48%"}}
      [v/vega-chart "flow-plot" v/line-equipment-spec]]
-    [:div {:style {:flex "0.1" :width "1%"}}]
-    [:div {:style {:flex "1" :width "45%"}}
+    [:div {:style {:flex "0.02" :max-width "2%"}}]
+    [:div {:style {:flex "0.49" :max-width "49%"}}
      [v/vega-chart "ltn-plot" v/ltn-spec]]]
    [flex-legend]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
@@ -1023,15 +1030,7 @@
      "clear-moves"]
     [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
      "random-moves"]
-    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click
-                            #(p/do! (println "loading moves")
-                                    (random-moves!)
-                                    (println "done")
-                                    (println "loading-images")
-                                    (when-not (@app-state :loaded)(p/delay 2000))
-                                    (swap! app-state assoc :loaded true)
-                                    (println "done")
-                                    (play!))}
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click demo-click}
      "demo"]
     [file-input]
     [visual-options]
@@ -1061,15 +1060,47 @@
      "clear-moves"]
     [:button.cesium-button {:style {:flex "0.5"} :id "random-moves" :type "button" :on-click #(random-moves!)}
      "random-moves"]
-    [:button.cesium-button {:style {:flex "0.5"} :id "demo" :type "button" :on-click
-                            #(p/do! (println "loading moves")
-                                    (random-moves!)
-                                    (println "done")
-                                    (println "loading-images")
-                                    (when-not (@app-state :loaded)(p/delay 2000))
-                                    (swap! app-state assoc :loaded true)
-                                    (println "done")
-                                    (play!))}
+    [:button.cesium-button {:style {:flex "0.5"} :id "demo" :type "button" :on-click  demo-click}
+     "demo"]
+    [file-input]
+    [visual-options]
+    [color-scheme-options]
+    [layout-options]]])
+
+(defn fvs-page [ratom]
+  [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
+   [:div.header  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"
+                   :font-size "xxx-large"}}
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+      "Origin"]
+     [:p {:id "c-day" :style {:margin "0 auto" :text-align "center" }}
+      "C-Day: " @c-day]
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+     "Transit"]]
+   [:div  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"}}
+    [:div {:style {:flex "0.50" :max-width "50%"}}
+     [cesium-root]]
+    [:div {:style  {:flex "0.50" :max-width "50%"}}
+     [cesium-inset]]]
+   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "95%" :max-width "95%"}}
+     [v/vega-chart "flow-plot" v/line-equipment-spec]]]
+   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "95%"  :max-width "95%"}}
+     [v/vega-chart "pax-plot" v/line-pax-spec]]]
+   [flex-legend]
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
+    [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "1"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "1"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click  demo-click}
      "demo"]
     [file-input]
     [visual-options]
@@ -1090,6 +1121,7 @@
       :overlay (ensure-layers! (overlay-page ratom))
       :stacked (ensure-layers! (stacked-page ratom))
       :tightly-stacked (ensure-layers! (tightly-stacked-page ratom))
+      :fvs     (ensure-layers! (fvs-page ratom))
         [:p (str "unknown layout!" layout)])))
 
 
@@ -1105,6 +1137,18 @@
   (reset! app-state default-state)
   (reagent/render [page app-state]
                   (.getElementById js/document "app")))
+
+;;we may have different plots depending on layout...
+;;since layout determines visuals.
+;;Basic idea is to create new layouts that are prebaked to
+;;have known visuals, drawing stats from in-memory data.
+;;active-plots maybe?
+;;{:active-plots {:flow-plot-view t->stats :ltn-plot-view t->stats}}}
+;;then our plotting watch function is data driven.
+;;when we change layout, we change the active plots if necessary.
+;;the plot-watch invokes rewind-plots and push-plots.
+
+;;so the view database is in the vega ns.
 
 ;;Main
 ;;====
