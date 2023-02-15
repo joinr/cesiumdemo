@@ -151,7 +151,8 @@
                                                      :canvas (.. v -scene -canvas)
                                                      :stroke (style :stroke)
                                                      :fill (style :fill)
-                                                     :strokeWidth (style :strokeWidth)} style)]
+                                                     :strokeWidth 20 #_(style :strokeWidth)} #_style)
+        #_#__ (aset p "clampToGround" true)]
     (.add  (.-dataSources v)
            p)
     p))

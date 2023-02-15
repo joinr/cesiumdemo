@@ -197,22 +197,23 @@
 (defn ->czml-origin [{:keys [lat long sitename component] :as m}]
   {:id   sitename
    :name sitename
-   :position {:cartographicDegrees [long lat  #_long 0]}
+   :position {:cartographicDegrees [long lat  5000]}
    :point {:color {:rgba (get-color component)}
           ;:outlineColor {:rgba [255 0 0 255]}
           ;:outlineWidth 4
-           :pixelSize 10}
+           :pixelSize 6 #_10
+           #_#_:heightReference "RELATIVE_TO_GROUND"}
    :properties m})
 
 ;;define poe, apoe..
 (defn ->czml-poe [{:keys [lat long long-name] :as m}]
   {:id   long-name
    :name long-name
-   :position {:cartographicDegrees [long lat 200]}
+   :position {:cartographicDegrees [long lat 5000]}
    :point {:color {:rgba [58, 158, 85 255] }
            :outlineColor {:rgba [0 0 0 255]}
            :outlineWidth 1
-           :pixelSize 10}
+           :pixelSize 6 #_10}
    :properties m})
 
 (defn forts! []
@@ -225,7 +226,7 @@
   (ces/load-geojson! "ne_10m_us_states.topojson" :style
                      {:stroke js/Cesium.Color.BLACK
                       :fill  (js/Cesium.Color.DARKGRAY.withAlpha 0.7),
-                      :strokeWidth 3}))
+                      :strokeWidth 20}))
 
 (defn countries! []
   (ces/load-geojson! "all-countries.geo.json" :id :inset
