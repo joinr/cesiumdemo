@@ -683,6 +683,24 @@
     (ces/remove-primitive! (get pcache :lines)))
   (swap! app-state dissoc :ecache :pcache))
 
+;;wrapper for v/rewind-samples that does nothing
+;;if plot is not rendered.
+(defn rewind-samples! [plot-name trend t]
+  (when (get @v/charts plot-name)
+    (v/rewind-samples! plot-name trend t)))
+
+(defn push-samples! [plot-name data]
+  (when (get @v/charts plot-name)
+    (v/push-samples! plot-name data)))
+
+(defn clear-data! [plot-name]
+  (when (get @v/charts plot-name)
+    (v/clear-data! plot-name)))
+
+(defn push-extents! [plot-name l r]
+  (when (get @v/charts plot-name)
+    (v/push-extents! plot-name l r)))
+
 (defn clear-moves! []
   (stop!)
   (swap! app-state dissoc :entities)
@@ -690,13 +708,13 @@
   (drop-layer! "moves")
   (drop-layer! "moves" :id :inset)
   #_(v/rewind-samples! :flow-plot-view "c-day" 0)
-  (v/clear-data! :flow-plot-view)
-  (v/push-extents! :flow-plot-view  0 1)
-  (v/clear-data! :pax-plot-view)
-  (v/push-extents! :pax-plot-view  0 1)
+  (clear-data! :flow-plot-view)
+  (push-extents! :flow-plot-view  0 1)
+  (clear-data! :pax-plot-view)
+  (push-extents! :pax-plot-view  0 1)
 #_  (v/rewind-samples! :ltn-plot-view "c-day" 0)
-  (v/clear-data! :ltn-plot-view)
-  (v/push-extents! :ltn-plot-view  0 1)
+  (clear-data! :ltn-plot-view)
+  (push-extents! :ltn-plot-view  0 1)
   (set-day! 0))
 
 (defn set-finish! [start stop]
@@ -705,10 +723,10 @@
   (set! (.-stopTime shared-clock)  (time/-julian (add-days +now+ stop)))
   (set! (.-clockRange shared-clock) js/Cesium.ClockRange.CLAMPED)
   (swap! app-state assoc :extents [start stop])
-  (v/push-extents! :flow-plot-view start stop)
-  (v/push-extents! :pax-plot-view start stop)
-  (v/push-extents! :ltn-plot-view start stop)
-  (v/push-samples! :ltn-plot-view #js[#js{:c-day start :trend "ltn" :value 0}]))
+  (push-extents! :flow-plot-view start stop)
+  (push-extents! :pax-plot-view start stop)
+  (push-extents! :ltn-plot-view start stop)
+  (push-samples! :ltn-plot-view #js[#js{:c-day start :trend "ltn" :value 0}]))
 
 (defn timed-random-moves! []
   (let [tmax (atom 0)
@@ -959,7 +977,9 @@
     {:stacked :stacked
      :overlay :overlay
      :tightly-stacked :tightly-stacked
-     :fvs  :fvs}
+     :fvs  :fvs
+     :fvs-geo   :fvs-geo
+     :fvs-graph :fvs-graph}
     :on-change #(swap! app-state assoc :layout % :layout-changed true)))
 
 (defn demo-click []
@@ -1112,6 +1132,62 @@
     [color-scheme-options]
     [layout-options]]])
 
+(defn fvs-graph [ratom]
+  [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
+   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "98%" :max-width "98%"}}
+     [v/vega-chart "flow-plot" (assoc v/line-equipment-spec :height 300)]]]
+   [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
+    [:div {:style {:flex "1" :width "98%"  :max-width "98%"}}
+     [v/vega-chart "pax-plot" (assoc v/line-pax-spec :height 300)]]]
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
+    [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "1"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "1"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click  demo-click}
+     "demo"]
+    [file-input]
+    [visual-options]
+    [color-scheme-options]
+    [layout-options]]])
+
+(defn fvs-geo [ratom]
+  [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "auto" #_"100%"}}
+   [:div.header  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"
+                   :font-size "xxx-large"}}
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+      "Origin"]
+     [:p {:id "c-day" :style {:margin "0 auto" :text-align "center" }}
+      "C-Day: " @c-day]
+     [:p {:style {:margin "0 auto" :text-align "center" }}
+      "Transit"]]
+   [:div {:style {:flex 1  :width "100%" :align-self "center" :position "relative" :height "auto"}}
+    [cesium-root]
+    [:div {:style {:position "absolute" :width "30%" :left "70%" :top "60%"}}
+     [cesium-inset]]]
+   [flex-legend]
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto"}}
+    [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "1"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "1"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click  demo-click}
+     "demo"]
+    [file-input]
+    [visual-options]
+    [color-scheme-options]
+    [layout-options]]])
+
 (defn ensure-layers! [obj]
   (let [res obj
         _   (when (@app-state :layout-changed)
@@ -1127,6 +1203,8 @@
       :stacked (ensure-layers! (stacked-page ratom))
       :tightly-stacked (ensure-layers! (tightly-stacked-page ratom))
       :fvs     (ensure-layers! (fvs-page ratom))
+      :fvs-geo (ensure-layers! (fvs-geo ratom))
+      :fvs-graph  (ensure-layers! (fvs-graph ratom))
         [:p (str "unknown layout!" layout)])))
 
 
@@ -1167,12 +1245,12 @@
   (add-watch c-day :plotting
              (fn [k r oldt newt]
                (if (< newt oldt)
-                 (do (v/rewind-samples! :flow-plot-view "c-day" newt)
-                     (v/rewind-samples! :pax-plot-view "c-day" newt)
-                     (v/rewind-samples! :ltn-plot-view "c-day" newt))
+                 (do (rewind-samples! :flow-plot-view "c-day" newt)
+                     (rewind-samples! :pax-plot-view "c-day" newt)
+                     (rewind-samples! :ltn-plot-view "c-day" newt))
                  (let [dstats (daily-stats newt)]
                    (when dstats
-                     (v/push-samples! :flow-plot-view dstats)
-                     (v/push-samples! :pax-plot-view  (.filter  dstats (fn [arr] (= (.-trend arr) "pax")))))
-                   (v/push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
+                     (push-samples! :flow-plot-view dstats)
+                     (push-samples! :pax-plot-view  (.filter  dstats (fn [arr] (= (.-trend arr) "pax")))))
+                   (push-samples! :ltn-plot-view  (daily-ltn-stats newt)))))))
 
