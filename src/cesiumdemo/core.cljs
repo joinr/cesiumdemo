@@ -1135,10 +1135,10 @@
 (defn fvs-graph [ratom]
   [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "100%"}}
    [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "98%" :max-width "98%"}}
+    [:div {:style {:flex "1" :width "98%" :max-width "97%"}}
      [v/vega-chart "flow-plot" (assoc v/line-equipment-spec :height 300)]]]
    [:div {:id "chart-root" :style {:height  "auto" :display "flex"}}
-    [:div {:style {:flex "1" :width "98%"  :max-width "98%"}}
+    [:div {:style {:flex "1" :width "98%"  :max-width "97%"}}
      [v/vega-chart "pax-plot" (assoc v/line-pax-spec :height 300)]]]
    [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto" #_"50%"}}
     [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
@@ -1161,11 +1161,11 @@
    [:div.header  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
                    :justify-content "space-between"
                    :font-size "xxx-large"}}
-     [:p {:style {:margin "0 auto" :text-align "center" }}
+     #_[:p {:style {:margin "0 auto" :text-align "center" }}
       "Origin"]
      [:p {:id "c-day" :style {:margin "0 auto" :text-align "center" }}
       "C-Day: " @c-day]
-     [:p {:style {:margin "0 auto" :text-align "center" }}
+     #_[:p {:style {:margin "0 auto" :text-align "center" }}
       "Transit"]]
    [:div {:style {:flex 1  :width "100%" :align-self "center" :position "relative" :height "auto"}}
     [cesium-root]

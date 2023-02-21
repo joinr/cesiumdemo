@@ -165,9 +165,10 @@
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
-                                 :axis {:title "Unit   Movement"
+                                 :axis {:title "Equipment Closures"
                                         :titleFontSize 22
-                                        :labelFontSize 16}
+                                        :labelFontSize 16
+                                        :format ".0%"}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
                              :color  {:field "trend",
@@ -220,9 +221,10 @@
                                  :scale {:domain [{:expr "xmin"} {:expr "xmax"}]
                                          :nice false}},
                             :y  {:field "value"
-                                 :axis {:title "Unit   Movement"
+                                 :axis {:title "Personnel Closures"
                                         :titleFontSize 22
-                                        :labelFontSize 16}
+                                        :labelFontSize 16
+                                        :format ".0%"}
                                  :type "quantitative"
                                  :scale {:domain [0.0 1.0]}},
                              :color  {:field "trend",
