@@ -381,16 +381,18 @@
 
          moves (->> [from transit to]
                    (util/ensure-partitions 3)
-                   (map (fn [t [lng lat h]]
-                          [t lng lat h]) [0 dtransit dstop]))
+                   (map (fn [t [lng lat h]] ;;change to prevent clipping in terrain....janky.
+                          [t lng lat #_h (max h 300000)]) [0 dtransit dstop]))
         [f tr t] moves
         [jx jy jz]  (or (@app-state :transit-jitter) [0 0 0])
         mult  (if (< (rand) 0.5) -1 1)
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
                    (util/jitter-txyz [jx jy jz]))
-        splined-path (util/spline-degrees (get @app-state :transit-spline-detail 1) [tr mp t])
-        moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path) #_[f tr mp t]]
+        splined-path (->> (util/spline-degrees (get @app-state :transit-spline-detail 1) [tr mp t])
+                          (util/dedupe-by (fn [coords]
+                                            (long (first coords)))))
+        moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path)]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 
         dynavail    (time/interval tstart ttransit)
@@ -905,13 +907,25 @@
     (set! (.-value target) "")
     file))
 
+(def prev (atom nil))
+
 (defn load-trends! [file]
-  (let [reader (js/FileReader.)
+  (let [_ (reset! prev file)
+        reader (js/FileReader.)
         _ (println (str "loading trends:" (.-name file)))
         _ (clear-moves!)]
     (set! (.-onload reader)
           #(some-> % .-target .-result etl/read-visual-moves load-moves!))
     (.readAsText reader file)))
+
+(defn read-file! [file]
+  (let [reader (js/FileReader.)
+        _ (println (str "reading:" (.-name file)))
+        contents (atom nil)]
+    (set! (.-onload reader)
+          #(reset! contents (some-> % .-target .-result)))
+    (.readAsText reader file)
+    contents))
 
 (defn change-color-scheme! [k]
   (when-let [{:keys [colors] :as scheme} (color-schemes k)]

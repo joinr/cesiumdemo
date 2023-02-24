@@ -141,7 +141,9 @@
         :from-name from :to-name to)
 
 (defn geo->lat-long [geo]
-  (some-> geo ea/geo->location (select-keys [:lat :long])))
+  (if-let [res (some-> geo ea/geo->location (select-keys [:lat :long]))]
+    res
+    (throw (ex-info (str [:unknown-location! geo]) {:in geo}))))
 
 (defn move->visual-move [id uic
                          {:keys [tstart ALD LAD CRD RDD  ORIG_GEO POE_GEO POD_GEO PAX TOTAL_STONS]}]

@@ -15,7 +15,7 @@
 
 (defn lerpn-1d [n xs]
   (if (zero? n)
-    xs
+    (dedupe xs) ;;cheesy way to clean up, perf isn't a priority though.
     (recur (dec n)
            (apply concat
                   (for [[l r] (partition 2 1 xs)]
@@ -177,6 +177,17 @@
          (lerpn-1d n)
          (map (fn [t]  (let [res (.evaluate s t)]
                          [t (.-x res) (.-y res) (.-z res)]))))))
+
+(defn dedupe-by [keyf xs]
+  (let [ks (atom #{})]
+    (into [] (filter (fn [x]
+                       (let [known @ks
+                             k     (keyf x)]
+                         (if (known k)
+                           false
+                           (do (swap! ks conj k)
+                               true)))))
+          xs)))
 
 
 (defn ->spline2d [times points]
