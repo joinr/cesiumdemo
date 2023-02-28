@@ -386,12 +386,14 @@
         [f tr t] moves
         [jx jy jz]  (or (@app-state :transit-jitter) [0 0 0])
         mult  (if (< (rand) 0.5) -1 1)
+        ;;hacky solution to westerly movement...
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
                    (util/jitter-txyz [jx jy jz]))
         splined-path (->> (util/spline-degrees (get @app-state :transit-spline-detail 1) [tr mp t])
                           (util/dedupe-by (fn [coords]
                                             (long (first coords)))))
+
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path)]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 

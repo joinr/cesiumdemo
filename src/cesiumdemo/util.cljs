@@ -7,11 +7,92 @@
 (defn hex->rgb [hx]
   (gcolor/hexToRgb hx))
 
+;;define a wrapping midpoint formula for longitude.  we ignore latitude for the moment, but
+;;the same technique can apply with different bounds (180 vs 360).
+
+;;so basically we project negative longitude onto a bounded interval (e.g. [0 360]).
+;;We want to compute the midpoint relative to l.  If l and are positive, its our trivial
+;;r - l /2.  Otherwise, if one is negative, we need to project them onto a cohesive interval
+;;(e.g. a circle).  compute the distance there, then apply the distance to the midpoint to
+;;l and project back into the original space.
+
+(defn project [x bound]
+  (if (neg? x)
+    (+ bound x)
+    x))
+
+(defn invert [x bound]
+  (if (> x (/ bound 2.0))
+    (- x bound)
+    x))
+
+;;we probably want the midpoint that is the minimum distance too....although
+;;there are probably exceptions.  At the least, this will correct westerly travel.
+(defn wrapping-mid
+  ([s d bound]
+   (let [sy    (project s bound)
+         dy    (project d bound)
+         distance (- dy sy)
+         d     (/ distance 2.0)
+         mpy   (+ sy d)]
+     (invert mpy bound)))
+  ([s d] (wrapping-mid s d 360)))
+
 (defn midpoint [[t0 x0 y0 z0] [t1 x1 y1 z1]]
   [(+ t0 (/ (- t1 t0) 2.0))
    (+ x0 (/ (- x1 x0) 2.0))
    (+ y0 (/ (- y1 y0) 2.0))
    (+ z0 (/ (- z1 z0) 2.0))])
+
+(defn wrapped-midpoint [[t0 x0 y0 z0] [t1 x1 y1 z1]]
+  [(+ t0 (/ (- t1 t0) 2.0))
+   (wrapping-mid x0 x1) #_(+ x0 (/ (- x1 x0) 2.0))
+   (+ y0 (/ (- y1 y0) 2.0))
+   (+ z0 (/ (- z1 z0) 2.0))])
+
+(defn min-direction [[_ x0 _ _] [_ x1 _ _]]
+  (cond (and (pos? x0) (pos? x1))
+        (if (< x0 x1) :east :west)
+        (and (neg? x0) (neg? x1))
+        (if (< x0 x1) :east :west)
+        (pos? x0) :east
+        :else :west))
+
+;;maybe we just uses cesium to lerp for us.
+(def wgs84 js/Cesium.Ellipsoid.WGS84)
+
+;;-157.5744 21.1955 0
+(defn ->carto [long lat height]
+  (js/Cesium.Cartographic.fromDegrees long lat height))
+
+(defn carto->long-lat [c]
+  [(js/Cesium.Math.toDegrees (.-longitude c))
+   (js/Cesium.Math.toDegrees (.-latitude  c))])
+
+
+(defprotocol ICarto
+  (as-carto [this])
+  (as-degrees [this]))
+
+(extend-protocol ICarto
+  cljs.core/PersistentArrayMap
+  (as-carto [this]
+    (->carto (get this :long) (get this :lat) (get this :height 0)))
+  (as-degrees [this]
+    this)
+  js/Cesium.Cartographic
+  (as-carto [this] this)
+  (as-degrees [this]
+    (carto->long-lat this)))
+
+
+;;so if we want to interpolate, we can create a geodisic between two points.
+;;pulling in from degrees.  typically expecting radians.
+;;so need to convert.  let's do lat long...we assume maps of {:keys [lat long]}
+;;for the moment.
+(defn ->geodesic [start end]
+  (js/Cesium.EllipsoidGeodesic. (as-carto start) (as-carto end) wgs84))
+
 
 (defn lerpn-1d [n xs]
   (if (zero? n)
