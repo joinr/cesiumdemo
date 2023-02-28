@@ -276,31 +276,39 @@
   (let [total-units (->> emoves (map :uic)  distinct count)
         late-units (->> emoves
                         (filter (comp pos? :delay))
-                        (group-by :uic))
-        total-late (count late-units)
-        unit-finals (for [[uic moves] late-units]
-                      (let [{:keys [cstop delay]} (->> moves (sort-by (comp - :cstop)) first)]
-                        (- cstop delay)))
-        p+          (fn [l r] (u/precision (+ l r) 4))
-        samples     (->> unit-finals
-                         sort
-                         (partition-by identity)
-                         (map (let [accum (atom 0)]
-                                 (fn [xs]
-                                   [(first xs) (swap! accum p+ (count xs))])))
-                         (map (fn [[t n]] [t (u/precision (double (/ n total-units)) 4)]))
-                         ->samples)
+                        (group-by :uic))]
+    (if (zero? (count late-units))
+      {:total-units total-units
+       :total-ltn 0
+       :percent-ltn 0.0
+       :extents (reduce (fn [[l r] {:keys [cstart cstop]}]
+                          [(min l cstart) (max r cstop)])
+                        (let [{:keys [cstart cstop]} (first emoves)]
+                          [cstart cstop]))}
+      (let [total-late  (count late-units)
+            unit-finals (for [[uic moves] late-units]
+                          (let [{:keys [cstop delay]} (->> moves (sort-by (comp - :cstop)) first)]
+                            (- cstop delay)))
+            p+          (fn [l r] (u/precision (+ l r) 4))
+            samples     (->> unit-finals
+                             sort
+                             (partition-by identity)
+                             (map (let [accum (atom 0)]
+                                    (fn [xs]
+                                      [(first xs) (swap! accum p+ (count xs))])))
+                             (map (fn [[t n]] [t (u/precision (double (/ n total-units)) 4)]))
+                             ->samples)
 
-       [from to] (extents samples)
-        trends   (->> samples
-                      expand-samples
-                      (reduce (fn [acc [t ltn]]
-                                (assoc acc t #js[#js{:c-day t :trend "ltn" :value ltn}])) {}))]
+            [from to] (extents samples)
+            trends   (->> samples
+                          expand-samples
+                          (reduce (fn [acc [t ltn]]
+                                    (assoc acc t #js[#js{:c-day t :trend "ltn" :value ltn}])) {}))]
     {:total-units total-units
      :total-ltn   total-late
      :percent-ltn (u/precision (/ total-late total-units) 4)
      :extents     (extents samples)
-     :trends      trends}))
+     :trends      trends}))))
 
 ;;we can go entity-moves->
 ;;  cumulative closures
