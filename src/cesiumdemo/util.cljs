@@ -83,7 +83,10 @@
   js/Cesium.Cartographic
   (as-carto [this] this)
   (as-degrees [this]
-    (carto->long-lat this)))
+    (carto->long-lat this))
+  cljs.core/PersistentVector
+  (as-carto [this] (->carto (nth this 0) (nth this 1) (nth this 2)))
+  (as-degrees [this] this))
 
 
 ;;so if we want to interpolate, we can create a geodisic between two points.
@@ -258,6 +261,41 @@
          (lerpn-1d n)
          (map (fn [t]  (let [res (.evaluate s t)]
                          [t (.-x res) (.-y res) (.-z res)]))))))
+
+;;this gets us much better results, but we are doing the geodesic arc type
+;;more or less computing it by hand.  all we really want is it to get the
+;;minimum direction, compute a heading, and then feed that.  Since
+;;the gis system understands -180+ degrees (and probably 180+) and
+;;can figure it out for us, we just get our end point computed,
+;;then go back and compute our midpoint like normal to get a straight
+;;line.  Then feed that into our legacy routine maybe.
+(defn geo-spline-degrees [n from to]
+  (let [[t0 x0 y0 h0] from
+        [t1 x1 y1 h1] to
+        gd (->geodesic [x0 y0 h0] [x1 y1 h1])
+        dt (- t1 t0)
+        dz (- h1 h0)
+        [mx my] (as-degrees (.interpolateUsingFraction gd 0.5))
+        mp [(+ t0 (/ (- t1 t0) 2.0)) mx my (+ h0 (/ (- h1 h0) 2.0))]
+        coords [from mp to]
+        times  (map first coords)]
+    (->> times
+         (lerpn-1d n)
+         (map (fn [t]
+                (let [prog (/ (- t t0) dt)
+                      res  (as-degrees (.interpolateUsingFraction gd prog))]
+                  [t (res 0) (res 1) (+ h0 (* prog dz))]
+                  ))))))
+
+;;returns [from midpoint to]
+(defn oriented-coords [from to]
+  (let [[t0 x0 y0 h0] from
+        [t1 x1 y1 h1] to
+        gd (->geodesic [x0 y0 h0] [x1 y1 h1])
+        [fx fy] (as-degrees (.interpolateUsingFraction gd 1.0)) ;;new end point
+        mp [(+ t0 (/ (- t1 t0) 2.0)) (+ x0 (/ (- fx x0) 2.0)) (+ y0  (/ (- fy y0) 2.0))  (+ h0 (/ (- h1 h0) 2.0))]
+        coords [from mp [t1 fx fy h1]]]
+        coords))
 
 (defn dedupe-by [keyf xs]
   (let [ks (atom #{})]

@@ -19345,57 +19345,57 @@
 {:code "DMER", :lat 19.3, :long 57.3834, :origin "DUQM INTL", :state "OM "}
 {:code "SAAM", :lat 17.0124, :long 54.1816, :origin "SALALAH", :state "OM "}
 {:code "SHEM", :lat 24.3002, :long 56.3711, :origin "SOHAR", :state "OM "}
-{:code "AEAQ", :lat 85.824, :long -79.332, :origin "MARCOS A GELABERT", :state "PA "}
-{:code "HCAL", :lat 85.6, :long -79.33, :origin "FT AMADOR", :state "PA "}
-{:code "AJEU", :lat 85.7, :long -79.33, :origin "ANCON", :state "PA "}
-{:code "AUTU", :lat 85.8, :long -79.33, :origin "BALBOA HEIGHTS", :state "PA "}
-{:code "AUTP", :lat 85.7, :long -79.34, :origin "BALBOA", :state "PA "}
-{:code "AYZW", :lat 92.0, :long -79.59, :origin "BATTERY PRATT", :state "PA "}
-{:code "AYZU", :lat 92.2, :long -79.572, :origin "BATTERY PRATT", :state "PA "}
-{:code "AYZY", :lat 92.04, :long -79.592, :origin "BATTERY PRATT", :state "PA "}
-{:code "CYZV", :lat 90.8, :long -79.45, :origin "CANAL ZONE", :state "PA "}
-{:code "DHFW", :lat 90.224, :long -79.4047, :origin "CERRO GORDO", :state "PA "}
-{:code "DSCY", :lat 85.9, :long -78.35, :origin "CHIVA CHIVA", :state "PA "}
-{:code "HDHM", :lat 90.0, :long -79.35, :origin "FT CLAYTON", :state "PA "}
-{:code "EBFH", :lat 92.2, :long -79.53, :origin "COCO SOLITO", :state "PA "}
-{:code "EBHH", :lat 92.2, :long -79.53, :origin "COCO SOLO", :state "PA "}
-{:code "EBRM", :lat 85.9, :long -79.35, :origin "COCOLI", :state "PA "}
-{:code "EDMP", :lat 92.1, :long -79.54, :origin "COLON", :state "PA "}
-{:code "EDMZ", :lat 92.1, :long -79.55, :origin "COLON", :state "PA "}
-{:code "EMXX", :lat 85.9, :long -79.35, :origin "COROZAL", :state "PA "}
-{:code "EXFP", :lat 92.2, :long -79.55, :origin "CRISTOBAL", :state "PA "}
-{:code "EYXJ", :lat 85.9, :long -79.38, :origin "CURUNDU", :state "PA "}
-{:code "HDQB", :lat 91.7, :long -79.54, :origin "FT WM DAVIS", :state "PA "}
-{:code "HLSS", :lat 91.557, :long -79.5428, :origin "FT WM D DAVIS", :state "PA "}
-{:code "FFVR", :lat 85.8, :long -79.34, :origin "DIABLO HEIGHTS", :state "PA "}
-{:code "HQJL", :lat 90.5, :long -79.55, :origin "GALETA ISL", :state "PA "}
-{:code "HQJE", :lat 92.2, :long -79.52, :origin "GALETA ISLAND NSG", :state "PA "}
-{:code "HQJF", :lat 92.2, :long -79.52, :origin "GALETA", :state "PA "}
-{:code "HQJQ", :lat 92.2, :long -79.52, :origin "GALETA ISLAND CA", :state "PA "}
-{:code "HQSH", :lat 90.8, :long -79.42, :origin "GAMBOA", :state "PA "}
-{:code "HTDT", :lat 91.6, :long -79.56, :origin "GATUN", :state "PA "}
-{:code "HFGH", :lat 91.9, :long -79.35, :origin "FT GULICK", :state "PA "}
-{:code "LCPU", :lat 85.453, :long -79.3559, :origin "PANAMA PACIFICO I", :state "PA "}
-{:code "FZXW", :lat 90.32, :long -79.395, :origin "EMPIRE RANGE", :state "PA "}
-{:code "HGFX", :lat 85.5, :long -79.35, :origin "FT KOBBE", :state "PA "}
-{:code "MQAS", :lat 85.7, :long -79.35, :origin "LACONA", :state "PA "}
-{:code "NSJB", :lat 85.5, :long -79.36, :origin "LOS RIOS", :state "PA "}
-{:code "NWZB", :lat 90.3, :long -79.38, :origin "MADDEN WYE", :state "PA "}
-{:code "PEAW", :lat 92.0, :long -79.55, :origin "MARGARITA", :state "PA "}
-{:code "SVCM", :lat 85.7, :long -79.3, :origin "PANAMA", :state "PA "}
-{:code "SVCN", :lat 85.7, :long -79.32, :origin "PANAMA CITY", :state "PA "}
-{:code "SZXM", :lat 90.1, :long -79.36, :origin "PEDRO MIGUEL", :state "PA "}
-{:code "EXFR", :lat 92.1, :long -79.55, :origin "CRISTOBAL", :state "PA "}
-{:code "TVZD", :lat 85.7, :long -79.33, :origin "QUARRY HEIGHTS", :state "PA "}
-{:code "HJXX", :lat 92.2, :long -79.53, :origin "FT RANDOLPH", :state "PA "}
-{:code "UKJP", :lat 85.6, :long -79.36, :origin "RODMAN", :state "PA "}
-{:code "WXWC", :lat 90.417, :long -79.23, :origin "TOCUMEN INTL", :state "PA "}
-{:code "HKMN", :lat 92.2, :long -79.57, :origin "FT SHERMAN", :state "PA "}
-{:code "SAE9", :lat 81.544, :long -79.0441, :origin "ISLA SAN JOSE", :state "PA "}
-{:code "SVDX", :lat 85.9, :long -78.34, :origin "PANAMA", :state "PA "}
-{:code "UNPU", :lat 90.0, :long -79.0, :origin "UNKN PANAMA", :state "PA "}
-{:code "SVDY", :lat 91.0, :long -79.5, :origin "PANAMA CANAL", :state "PA "}
-{:code "UKKV", :lat 85.8, :long -79.34, :origin "RODMAN NAVAL STAT", :state "PA "}
+{:code "AEAQ", :lat 8.5824, :long -79.332, :origin "MARCOS A GELABERT", :state "PA "}
+{:code "HCAL", :lat 8.56, :long -79.33, :origin "FT AMADOR", :state "PA "}
+{:code "AJEU", :lat 8.57, :long -79.33, :origin "ANCON", :state "PA "}
+{:code "AUTU", :lat 8.58, :long -79.33, :origin "BALBOA HEIGHTS", :state "PA "}
+{:code "AUTP", :lat 8.57, :long -79.34, :origin "BALBOA", :state "PA "}
+{:code "AYZW", :lat 9.2, :long -79.59, :origin "BATTERY PRATT", :state "PA "}
+{:code "AYZU", :lat 9.22, :long -79.572, :origin "BATTERY PRATT", :state "PA "}
+{:code "AYZY", :lat 9.204, :long -79.592, :origin "BATTERY PRATT", :state "PA "}
+{:code "CYZV", :lat 9.08, :long -79.45, :origin "CANAL ZONE", :state "PA "}
+{:code "DHFW", :lat 9.0224, :long -79.4047, :origin "CERRO GORDO", :state "PA "}
+{:code "DSCY", :lat 8.59, :long -78.35, :origin "CHIVA CHIVA", :state "PA "}
+{:code "HDHM", :lat 9.0, :long -79.35, :origin "FT CLAYTON", :state "PA "}
+{:code "EBFH", :lat 9.22, :long -79.53, :origin "COCO SOLITO", :state "PA "}
+{:code "EBHH", :lat 9.22, :long -79.53, :origin "COCO SOLO", :state "PA "}
+{:code "EBRM", :lat 8.59, :long -79.35, :origin "COCOLI", :state "PA "}
+{:code "EDMP", :lat 9.21, :long -79.54, :origin "COLON", :state "PA "}
+{:code "EDMZ", :lat 9.21, :long -79.55, :origin "COLON", :state "PA "}
+{:code "EMXX", :lat 8.59, :long -79.35, :origin "COROZAL", :state "PA "}
+{:code "EXFP", :lat 9.22, :long -79.55, :origin "CRISTOBAL", :state "PA "}
+{:code "EYXJ", :lat 8.59, :long -79.38, :origin "CURUNDU", :state "PA "}
+{:code "HDQB", :lat 9.17, :long -79.54, :origin "FT WM DAVIS", :state "PA "}
+{:code "HLSS", :lat 9.1557, :long -79.5428, :origin "FT WM D DAVIS", :state "PA "}
+{:code "FFVR", :lat 8.58, :long -79.34, :origin "DIABLO HEIGHTS", :state "PA "}
+{:code "HQJL", :lat 9.05, :long -79.55, :origin "GALETA ISL", :state "PA "}
+{:code "HQJE", :lat 9.22, :long -79.52, :origin "GALETA ISLAND NSG", :state "PA "}
+{:code "HQJF", :lat 9.22, :long -79.52, :origin "GALETA", :state "PA "}
+{:code "HQJQ", :lat 9.22, :long -79.52, :origin "GALETA ISLAND CA", :state "PA "}
+{:code "HQSH", :lat 9.08, :long -79.42, :origin "GAMBOA", :state "PA "}
+{:code "HTDT", :lat 9.16, :long -79.56, :origin "GATUN", :state "PA "}
+{:code "HFGH", :lat 9.19, :long -79.35, :origin "FT GULICK", :state "PA "}
+{:code "LCPU", :lat 8.5453, :long -79.3559, :origin "PANAMA PACIFICO I", :state "PA "}
+{:code "FZXW", :lat 9.032, :long -79.395, :origin "EMPIRE RANGE", :state "PA "}
+{:code "HGFX", :lat 8.55, :long -79.35, :origin "FT KOBBE", :state "PA "}
+{:code "MQAS", :lat 8.57, :long -79.35, :origin "LACONA", :state "PA "}
+{:code "NSJB", :lat 8.55, :long -79.36, :origin "LOS RIOS", :state "PA "}
+{:code "NWZB", :lat 9.03, :long -79.38, :origin "MADDEN WYE", :state "PA "}
+{:code "PEAW", :lat 9.2, :long -79.55, :origin "MARGARITA", :state "PA "}
+{:code "SVCM", :lat 8.57, :long -79.3, :origin "PANAMA", :state "PA "}
+{:code "SVCN", :lat 8.57, :long -79.32, :origin "PANAMA CITY", :state "PA "}
+{:code "SZXM", :lat 9.01, :long -79.36, :origin "PEDRO MIGUEL", :state "PA "}
+{:code "EXFR", :lat 9.21, :long -79.55, :origin "CRISTOBAL", :state "PA "}
+{:code "TVZD", :lat 8.57, :long -79.33, :origin "QUARRY HEIGHTS", :state "PA "}
+{:code "HJXX", :lat 9.22, :long -79.53, :origin "FT RANDOLPH", :state "PA "}
+{:code "UKJP", :lat 8.56, :long -79.36, :origin "RODMAN", :state "PA "}
+{:code "WXWC", :lat 9.0417, :long -79.23, :origin "TOCUMEN INTL", :state "PA "}
+{:code "HKMN", :lat 9.22, :long -79.57, :origin "FT SHERMAN", :state "PA "}
+{:code "SAE9", :lat 8.1544, :long -79.0441, :origin "ISLA SAN JOSE", :state "PA "}
+{:code "SVDX", :lat 8.59, :long -78.34, :origin "PANAMA", :state "PA "}
+{:code "UNPU", :lat 9.0, :long -79.0, :origin "UNKN PANAMA", :state "PA "}
+{:code "SVDY", :lat 9.1, :long -79.5, :origin "PANAMA CANAL", :state "PA "}
+{:code "UKKV", :lat 8.58, :long -79.34, :origin "RODMAN NAVAL STAT", :state "PA "}
 {:code "CXJC", :lat -12.03, :long -77.1, :origin "CALLAO", :state "PE "}
 {:code "NFLN", :lat -12.04, :long -76.59, :origin "LIMA", :state "PE "}
 {:code "URFU", :lat -81.4, :long -78.59, :origin "SALAVERRY", :state "PE "}

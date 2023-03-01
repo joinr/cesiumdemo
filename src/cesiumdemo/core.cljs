@@ -384,15 +384,19 @@
                    (map (fn [t [lng lat h]] ;;change to prevent clipping in terrain....janky.
                           [t lng lat #_h (max h 300000)]) [0 dtransit dstop]))
         [f tr t] moves
-        [jx jy jz]  (or (@app-state :transit-jitter) [0 0 0])
+        jitter? (@app-state :transit-jitter)
+        [jx jy jz]  (or  jitter? [0 0 0])
         mult  (if (< (rand) 0.5) -1 1)
-        ;;hacky solution to westerly movement...
+        [tr mp t]    (util/oriented-coords tr t)
         mp    (->> (util/midpoint tr t)
                    ;;we can jitter the midpoint...
                    (util/jitter-txyz [jx jy jz]))
         splined-path (->> (util/spline-degrees (get @app-state :transit-spline-detail 1) [tr mp t])
+                          #_(util/geo-spline-degrees (get @app-state :transit-spline-detail 1) tr t)
                           (util/dedupe-by (fn [coords]
-                                            (long (first coords)))))
+                                            (long (first coords))))
+                          #_
+                          (map (fn [r] (if  jitter? (util/jitter-txyz [jx jy jz] r) r))))
 
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path)]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
