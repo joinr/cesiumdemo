@@ -1608,7 +1608,7 @@
 {:code "RCRS", :lat 38.3554, :long -121.2435, :origin "RCRT SACRAMENTO", :state "CA "}
 {:code "RCRB", :lat 33.4444, :long -117.5241, :origin "RCRT SANTA ANA", :state "CA "}
 {:code "UANE", :lat 40.11, :long -122.14, :origin "RED BLUFF", :state "CA "}
-{:code "TKJP", :lat 0.0, :long 0.0, :origin "POINT ARGUELLO", :state "CA "}
+{:code "TKJP", :lat 34.5772, :long -120.6507, :origin "POINT ARGUELLO", :state "CA "}
 {:code "TKVP", :lat 32.43, :long -117.15, :origin "POINT LOMA", :state "CA "}
 {:code "GERV", :lat 40.1045, :long -122.1527, :origin "RED BLUFF G1", :state "CA "}
 {:code "TKXB", :lat 34.07, :long -119.07, :origin "POINT MUGU", :state "CA "}
@@ -2448,7 +2448,7 @@
 {:code "GQAH", :lat 30.3, :long -81.26, :origin "FERNANDINA BEACH", :state "FL "}
 {:code "GRAU", :lat 29.29, :long -81.08, :origin "FLAGLER BEACH", :state "FL "}
 {:code "GTXT", :lat 25.27, :long -80.28, :origin "FLORIDA CITY", :state "FL "}
-{:code "GSUW", :lat 0.0, :long 0.0, :origin "FLEMING KEY", :state "FL "}
+{:code "GSUW", :lat 24.5811, :long -81.7965, :origin "FLEMING KEY", :state "FL "}
 {:code "HGJS", :lat 26.1, :long -80.1, :origin "FT LAUDERDALE", :state "FL "}
 {:code "HGJC", :lat 26.09, :long -80.08, :origin "FT LAUDERDALE", :state "FL "}
 {:code "HGJR", :lat 26.0418, :long -80.0859, :origin "FORT LAUDERDALE H", :state "FL "}
@@ -2492,14 +2492,14 @@
 {:code "GEXR", :lat 28.071, :long -81.3817, :origin "HAINES CITY G1", :state "FL "}
 {:code "GEXS", :lat 26.0107, :long -80.09, :origin "HOLLYWOOD G1", :state "FL "}
 {:code "KYJX", :lat 25.29, :long -80.29, :origin "HOMESTEAD", :state "FL "}
-{:code "KZKW", :lat 0.0, :long 0.0, :origin "HOMESTEAD 84", :state "FL "}
+{:code "KZKW", :lat 25.4955, :long -80.3948, :origin "HOMESTEAD 84", :state "FL "}
 {:code "KYXR", :lat 25.29, :long -80.24, :origin "HOMESTEAD HM 95", :state "FL "}
 {:code "KYXL", :lat 25.29, :long -80.24, :origin "HOMESTEAD HM 01", :state "FL "}
-{:code "KZKX", :lat 0.0, :long 0.0, :origin "HOMESTEAD 59", :state "FL "}
+{:code "KZKX", :lat 25.4955, :long -80.3948, :origin "HOMESTEAD 59", :state "FL "}
 {:code "KYJM", :lat 25.2919, :long -80.2301, :origin "HOMESTEAD ARB", :state "FL "}
-{:code "KZKY", :lat 0.0, :long 0.0, :origin "HOMESTEAD 39", :state "FL "}
+{:code "KZKY", :lat 25.4955, :long -80.3948, :origin "HOMESTEAD 39", :state "FL "}
 {:code "LDHN", :lat 28.2151, :long -82.4137, :origin "HUDSON", :state "FL "}
-{:code "KZKZ", :lat 0.0, :long 0.0, :origin "HOMESTEAD 12", :state "FL "}
+{:code "KZKZ", :lat 25.4955, :long -80.3948, :origin "HOMESTEAD 12", :state "FL "}
 {:code "LFSY", :lat 30.26, :long -86.41, :origin "HURLBURT", :state "FL "}
 {:code "LJJQ", :lat 26.2602, :long -81.2405, :origin "IMMOKALEE RGNL", :state "FL "}
 {:code "FTEV", :lat 30.254, :long -86.4121, :origin "HURLBURT FLD", :state "FL "}
@@ -9090,69 +9090,69 @@
 {:code "YORC", :lat 36.0122, :long -78.29, :origin "YOUNGSVILLE READI", :state "NC "}
 {:code "ABLF", :lat 48.27, :long -98.06, :origin "ADAMS", :state "ND "}
 {:code "AHSQ", :lat 46.29, :long -103.19, :origin "AMIDON", :state "ND "}
-{:code "APQG", :lat 46.02, :long -992.2, :origin "ASHLEY", :state "ND "}
-{:code "BKWR", :lat 48.2, :long -101.44, :origin "BERTHOLD", :state "ND "}
-{:code "BMSA", :lat 47.17, :long -101.48, :origin "BEULAH", :state "ND "}
-{:code "BSEH", :lat 46.5, :long -100.48, :origin "BISMARCK", :state "ND "}
-{:code "NDRV", :lat 46.48, :long -100.4625, :origin "BISMARCK", :state "ND "}
-{:code "GAYM", :lat 46.4835, :long -100.4852, :origin "BISMARCK G1", :state "ND "}
-{:code "GAYP", :lat 46.4926, :long -100.4413, :origin "BISMARCK G2", :state "ND "}
-{:code "GAYQ", :lat 46.4741, :long -100.4526, :origin "BISMARCK G3", :state "ND "}
-{:code "XZA6", :lat 46.4741, :long -100.4551, :origin "BISMARCK LEASE", :state "ND "}
-{:code "CBFL", :lat 48.49, :long -100.28, :origin "BOTTINEAU", :state "ND "}
-{:code "GAYR", :lat 48.4934, :long -100.2645, :origin "BOTTINEAU G1", :state "ND "}
-{:code "ESPN", :lat 48.07, :long -985.4, :origin "CP GRAFTON", :state "ND "}
-{:code "CZJF", :lat 48.29, :long -991.2, :origin "CANDO", :state "ND "}
-{:code "DDLR", :lat 47.27, :long -990.8, :origin "CARRINGTON", :state "ND "}
-{:code "GAYT", :lat 48.2927, :long -991.212, :origin "CANDO G1", :state "ND "}
-{:code "GAYU", :lat 47.2702, :long -990.734, :origin "CARRINGTON G1", :state "ND "}
-{:code "DFWH", :lat 48.48, :long -974.8, :origin "CAVALIER", :state "ND "}
-{:code "DTDP", :lat 44.18, :long -991.1, :origin "CHURCHS FERRY", :state "ND "}
-{:code "DFYA", :lat 46.0427, :long -972.302, :origin "CAYUGA", :state "ND "}
-{:code "GAYV", :lat 48.4739, :long -973.718, :origin "CAVALIER G1", :state "ND "}
-{:code "FFPJ", :lat 48.07, :long -985.4, :origin "DEVILS LAKE", :state "ND "}
-{:code "FGBZ", :lat 46.48, :long -102.48, :origin "DICKINSON", :state "ND "}
-{:code "FNFC", :lat 48.49, :long -100.04, :origin "DUNSEITH", :state "ND "}
-{:code "GAYW", :lat 46.5338, :long -102.4707, :origin "DICKINSON G1", :state "ND "}
-{:code "FRZJ", :lat 46.2146, :long -984.231, :origin "EDGELEY", :state "ND "}
-{:code "GAYX", :lat 46.2125, :long -984.258, :origin "EDGELEY G1", :state "ND "}
-{:code "FXHA", :lat 46.4715, :long -100.0305, :origin "ELLSWORTH SM H04", :state "ND "}
-{:code "GMNM", :lat 46.52, :long -964.6, :origin "FARGO", :state "ND "}
-{:code "GMNH", :lat 46.52, :long -964.9, :origin "FARGO 02", :state "ND "}
-{:code "EZFU", :lat 46.5451, :long -964.846, :origin "FARGO", :state "ND "}
-{:code "GAYY", :lat 46.5308, :long -964.94, :origin "FARGO G1", :state "ND "}
-{:code "GAYZ", :lat 46.5419, :long -964.854, :origin "FARGO G2", :state "ND "}
-{:code "GQQD", :lat 47.39, :long -993.8, :origin "FESSENDEN", :state "ND "}
-{:code "HSNE", :lat 47.38, :long -101.26, :origin "GARRISON", :state "ND "}
-{:code "HSND", :lat 47.3007, :long -101.2552, :origin "GARRISON USAC EN", :state "ND "}
-{:code "JFXG", :lat 47.53, :long -972.4, :origin "GRAND FORKS SMK03", :state "ND "}
-{:code "JGAS", :lat 47.53, :long -972.4, :origin "GRAND FORKS", :state "ND "}
-{:code "JGAM", :lat 47.57, :long -972.4, :origin "GRAND FORKS", :state "ND "}
-{:code "JERW", :lat 48.25, :long -972.4, :origin "GRAFTON", :state "ND "}
-{:code "JFSL", :lat 47.57, :long -970.5, :origin "GRAND FORKS", :state "ND "}
-{:code "GORK", :lat 47.5528, :long -970.546, :origin "GRAND FORKS", :state "ND "}
-{:code "GAZA", :lat 48.2517, :long -972.44, :origin "GRAFTON G1", :state "ND "}
-{:code "GAZB", :lat 47.5628, :long -970.526, :origin "GRAND FORKS G1", :state "ND "}
-{:code "GDNH", :lat 47.5441, :long -970.554, :origin "GRAND FORKS G2", :state "ND "}
-{:code "JFSD", :lat 47.574, :long -972.404, :origin "GRAND FORKS AFB", :state "ND "}
-{:code "XZDJ", :lat 47.5421, :long -970.556, :origin "GRAND FORKS FMS 3", :state "ND "}
-{:code "JXXD", :lat 47.22, :long -102.21, :origin "HALLIDAY", :state "ND "}
-{:code "KFPZ", :lat 47.46, :long -995.6, :origin "HARVEY", :state "ND "}
-{:code "KNCK", :lat 46.0, :long -102.38, :origin "HETTINGER", :state "ND "}
-{:code "KSRM", :lat 47.25, :long -970.4, :origin "HILLSBORO", :state "ND "}
-{:code "KJLU", :lat 47.12, :long -101.45, :origin "HAZEN", :state "ND "}
-{:code "GAZC", :lat 47.1805, :long -101.362, :origin "HAZEN G1", :state "ND "}
-{:code "GAZD", :lat 46.0539, :long -102.2742, :origin "HETTINGER G1", :state "ND "}
-{:code "LTEW", :lat 46.55, :long -984.1, :origin "JAMESTOWN", :state "ND "}
-{:code "GAZE", :lat 46.5103, :long -984.433, :origin "JAMESTOWN G1", :state "ND "}
-{:code "GDTN", :lat 46.5236, :long -984.212, :origin "JAMESTOWN G2", :state "ND "}
-{:code "MCQY", :lat 48.4, :long -102.04, :origin "KENMARE", :state "ND "}
-{:code "MJXD", :lat 48.23, :long -994.0, :origin "KNOX", :state "ND "}
-{:code "MTSA", :lat 48.45, :long -982.2, :origin "LANGDON", :state "ND "}
-{:code "HGYL", :lat 46.47, :long -100.05, :origin "FT LINCOLN", :state "ND "}
-{:code "NHRX", :lat 46.15, :long -100.15, :origin "LINTON", :state "ND "}
-{:code "NHTK", :lat 46.26, :long -974.1, :origin "LISBON", :state "ND "}
-{:code "GAZF", :lat 46.263, :long -974.12, :origin "LISBON G1", :state "ND "}
+{:code "APQG", :lat 46.02, :long -99.22, :origin "ASHLEY", :state "ND "}
+{:code "BKWR", :lat 48.2, :long -98.54, :origin "BERTHOLD", :state "ND "}
+{:code "BMSA", :lat 47.17, :long -99.12, :origin "BEULAH", :state "ND "}
+{:code "BSEH", :lat 46.5, :long -99.08, :origin "BISMARCK", :state "ND "}
+{:code "NDRV", :lat 46.48, :long -99.1212, :origin "BISMARCK", :state "ND "}
+{:code "GAYM", :lat 46.4835, :long -99.0734, :origin "BISMARCK G1", :state "ND "}
+{:code "GAYP", :lat 46.4926, :long -97.48, :origin "BISMARCK G2", :state "ND "}
+{:code "GAYQ", :lat 46.4741, :long -99.11, :origin "BISMARCK G3", :state "ND "}
+{:code "XZA6", :lat 46.4741, :long -97.2302, :origin "BISMARCK LEASE", :state "ND "}
+{:code "CBFL", :lat 48.49, :long -97.3718, :origin "BOTTINEAU", :state "ND "}
+{:code "GAYR", :lat 48.4934, :long -98.54, :origin "BOTTINEAU G1", :state "ND "}
+{:code "ESPN", :lat 48.07, :long -98.4231, :origin "CP GRAFTON", :state "ND "}
+{:code "CZJF", :lat 48.29, :long -98.4258, :origin "CANDO", :state "ND "}
+{:code "DDLR", :lat 47.27, :long -96.46, :origin "CARRINGTON", :state "ND "}
+{:code "GAYT", :lat 48.2927, :long -96.49, :origin "CANDO G1", :state "ND "}
+{:code "GAYU", :lat 47.2702, :long -96.4846, :origin "CARRINGTON G1", :state "ND "}
+{:code "DFWH", :lat 48.48, :long -96.494, :origin "CAVALIER", :state "ND "}
+{:code "DTDP", :lat 44.18, :long -96.4854, :origin "CHURCHS FERRY", :state "ND "}
+{:code "DFYA", :lat 46.0427, :long -99.38, :origin "CAYUGA", :state "ND "}
+{:code "GAYV", :lat 48.4739, :long -97.24, :origin "CAVALIER G1", :state "ND "}
+{:code "FFPJ", :lat 48.07, :long -97.24, :origin "DEVILS LAKE", :state "ND "}
+{:code "FGBZ", :lat 46.48, :long -97.24, :origin "DICKINSON", :state "ND "}
+{:code "FNFC", :lat 48.49, :long -97.24, :origin "DUNSEITH", :state "ND "}
+{:code "GAYW", :lat 46.5338, :long -97.05, :origin "DICKINSON G1", :state "ND "}
+{:code "FRZJ", :lat 46.2146, :long -97.0546, :origin "EDGELEY", :state "ND "}
+{:code "GAYX", :lat 46.2125, :long -97.244, :origin "EDGELEY G1", :state "ND "}
+{:code "FXHA", :lat 46.4715, :long -97.0526, :origin "ELLSWORTH SM H04", :state "ND "}
+{:code "GMNM", :lat 46.52, :long -97.0554, :origin "FARGO", :state "ND "}
+{:code "GMNH", :lat 46.52, :long -97.2404, :origin "FARGO 02", :state "ND "}
+{:code "EZFU", :lat 46.5451, :long -97.0556, :origin "FARGO", :state "ND "}
+{:code "GAYY", :lat 46.5308, :long -99.56, :origin "FARGO G1", :state "ND "}
+{:code "GAYZ", :lat 46.5419, :long -97.04, :origin "FARGO G2", :state "ND "}
+{:code "GQQD", :lat 47.39, :long -98.41, :origin "FESSENDEN", :state "ND "}
+{:code "HSNE", :lat 47.38, :long -98.4433, :origin "GARRISON", :state "ND "}
+{:code "HSND", :lat 47.3007, :long -98.4212, :origin "GARRISON USAC EN", :state "ND "}
+{:code "JFXG", :lat 47.53, :long -99.4, :origin "GRAND FORKS SMK03", :state "ND "}
+{:code "JGAS", :lat 47.53, :long -98.22, :origin "GRAND FORKS", :state "ND "}
+{:code "JGAM", :lat 47.57, :long -97.41, :origin "GRAND FORKS", :state "ND "}
+{:code "JERW", :lat 48.25, :long -97.412, :origin "GRAFTON", :state "ND "}
+{:code "JFSL", :lat 47.57, :long -97.18, :origin "GRAND FORKS", :state "ND "}
+{:code "GORK", :lat 47.5528, :long -97.1924, :origin "GRAND FORKS", :state "ND "}
+{:code "GAZA", :lat 48.2517, :long -96.4656, :origin "GRAFTON G1", :state "ND "}
+{:code "GAZB", :lat 47.5628, :long -97.24, :origin "GRAND FORKS G1", :state "ND "}
+{:code "GDNH", :lat 47.5441, :long -99.45, :origin "GRAND FORKS G2", :state "ND "}
+{:code "JFSD", :lat 47.574, :long -98.05, :origin "GRAND FORKS AFB", :state "ND "}
+{:code "XZDJ", :lat 47.5421, :long -98.3205, :origin "GRAND FORKS FMS 3", :state "ND "}
+{:code "JXXD", :lat 47.22, :long -99.09, :origin "HALLIDAY", :state "ND "}
+{:code "KFPZ", :lat 47.46, :long -99.5942, :origin "HARVEY", :state "ND "}
+{:code "KNCK", :lat 46.0, :long -98.0, :origin "HETTINGER", :state "ND "}
+{:code "KSRM", :lat 47.25, :long -97.5936, :origin "HILLSBORO", :state "ND "}
+{:code "KJLU", :lat 47.12, :long -97.5958, :origin "HAZEN", :state "ND "}
+{:code "GAZC", :lat 47.1805, :long -96.36, :origin "HAZEN G1", :state "ND "}
+{:code "GAZD", :lat 46.0539, :long -99.34, :origin "HETTINGER G1", :state "ND "}
+{:code "LTEW", :lat 46.55, :long -96.362, :origin "JAMESTOWN", :state "ND "}
+{:code "GAZE", :lat 46.5103, :long -96.3624, :origin "JAMESTOWN G1", :state "ND "}
+{:code "GDTN", :lat 46.5236, :long -96.48, :origin "JAMESTOWN G2", :state "ND "}
+{:code "MCQY", :lat 48.4, :long -99.3907, :origin "KENMARE", :state "ND "}
+{:code "MJXD", :lat 48.23, :long -97.1, :origin "KNOX", :state "ND "}
+{:code "MTSA", :lat 48.45, :long -99.36, :origin "LANGDON", :state "ND "}
+{:code "HGYL", :lat 46.47, :long -96.483, :origin "FT LINCOLN", :state "ND "}
+{:code "NHRX", :lat 46.15, :long -97.1026, :origin "LINTON", :state "ND "}
+{:code "NHTK", :lat 46.26, :long -96.4857, :origin "LISBON", :state "ND "}
+{:code "GAZF", :lat 46.263, :long -98.26, :origin "LISBON G1", :state "ND "}
 {:code "PAJP", :lat 46.49, :long -100.54, :origin "MANDAN", :state "ND "}
 {:code "PPUW", :lat 47.3, :long -971.8, :origin "MAYVILLE", :state "ND "}
 {:code "GAZG", :lat 47.2951, :long -971.924, :origin "MAYVILLE G1", :state "ND "}

@@ -49,9 +49,11 @@
                     :transit-equipment  true
                     :transit-spline-detail 2
                     :transit-width      1
-                    :colors colors
+                    :colors (merge colors (-> color-schemes :orange-trans :colors))
                     :pax-origin-width 3
                     :equipment-origin-width 3
+                    :icon-wait 0       ;;amount to wait in terminal position.
+                    :retain-icons false ;;enable sticky icons for non-transit display.
                     })
 
 
@@ -349,6 +351,16 @@
 ;;Then the lines are switched with static variants for performance.
 ;;The billboard follows the "to" position the whole way through.
 ;;"to" can actually be the billboard.
+;;we want to enable "sticky" icons or accumulating units to enable operational
+;;displays.  So we define a global mode in the app state that communicates this
+;;(or alternately, add some parsing options for the individual icons - that might
+;;be nice to specify individual icons for units that "stick" to demonstrate arrival...)
+;;If an icon is intended to stick around, we append a terminal move that extends its
+;;final position to extend for some time (e.g. 365 days) and change the dynamic availability
+;;for the icon(s) to be allavailable.  legacy impl splits dynavail and shared avail between
+;;conus/transit phases.
+;;For now we start with a global flag to set sticky icons, with the option to have data-driven
+;;specification later (more fine grained, also more work).
 (defn ->move [from transit to tstart dtransit dstop & {:keys [id imagery move-types from-name to-name]}]
   (let [id      (or id (str "-move" (rand)))
         id-pos  (str id "#position")
@@ -356,6 +368,9 @@
         from-id (str id "-from")
         to-id   (str id "-to")
         vec->lat-long (fn [[lng lat h]] {:lat lat :long lng})
+
+        icon-wait (@app-state :icon-wait) ;;new opts for sticky icons.
+        retain?  (@app-state :retain-icons)
 
         [pax-src pax-target pax-dynamic pax-static :as pm]
         (when (move-types :pax)
@@ -401,6 +416,13 @@
         moves (util/catvec (for [[dt lng lat h] (concat [f] splined-path)]
                              [(iso-str (time/add-days tstart dt)) lng lat h]))
 
+        ;;add a timed delay to the last position.  should accumulate icon.
+        ;;maybe move this to a separate function..
+        moves (if retain?
+                (let [[t lng lat h] (last (partition 4 moves))]
+                  (conj moves (iso-str (time/add-days tstart icon-wait)) lng lat h))
+                moves)
+
         dynavail    (time/interval tstart ttransit)
         allavail    (time/interval tstart   (time/add-days tstop 365))
         staticavail (time/interval ttransit (time/add-days tstop 365))
@@ -432,7 +454,7 @@
                      :eyeOffset   {:cartesian [0 0 -10000]}
                      :scaleByDistance {:NearFarScalar [1.5e2, 2.0, 1.5e7, 0.15]}})
        :position {:reference target-pos}
-       :availability dynavail
+       :availability (if retain? allavail dynavail)
        :properties {:billboard-type "patch" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}
      {:id   (str bbid "src")
       :name (str bbid "src")
@@ -447,7 +469,7 @@
                 :outlineColor {:rgba [204, 255, 225 125]}
                 :outlineWidth 2
                 :pixelSize 4})
-      :availability dynavail
+      :availability (if retain? allavail dynavail)
       :position {:reference target-pos}
       :properties {:billboard-type "icon" :shared (@app-state :shared-icons)  :shared-avail sharedavail}}]
      (filter identity
@@ -820,7 +842,11 @@
              :us        [-129.2	20.2	-62.7	51.1]
              :us-europe [-125.8	16.7	71.7	55.2]
              :europe    [-12.6	34.7	53.8	60.3]
-             :us-asia   [88.7	5.3	-67.7	48.5]})
+             :us-asia   [88.7	5.3	-67.7	48.5]
+             :us-hld   {:position [-1.1789283742143026E7 -851171.9394538645 4220213.20184823],
+                        :direction [-0.014107715109319626 0.8223014117772767 -0.5688772807587698],
+                        :up [-0.009758438829426674 0.5687935771746235 0.8224224215307534],
+                        :right [0.9998528617981781 0.01715385536820768 2.833893553849664E-10]}})
 
 (def viewer-options
   {:skyBox false
@@ -840,6 +866,20 @@
           :timeline         false
           :navigationHelpButton false
           :sceneModePicker false
+          :mapProjection (js/Cesium.WebMercatorProjection.)
+          :resolutionScale 1.0
+          }))
+
+(def hld-options
+  (merge viewer-options
+         {:sceneMode Cesium.SceneMode.COLUMBUS_VIEW
+          ;:animation true
+          ;:fullscreenButton false
+          :homeButton        false
+          ;:infoBox          false
+          ;:timeline         false
+          :navigationHelpButton false
+          :sceneModePicker true
           :mapProjection (js/Cesium.WebMercatorProjection.)
           :resolutionScale 1.0
           }))
@@ -864,6 +904,16 @@
       [:div.cesiumContainer {}
        [ces/cesium-viewer {:name "cesium" :opts inset-options :id :inset
                            :extents (bounds :inset-atlantic)}]])))
+
+(defn hld-root
+  ([opts]
+   (let [_ (js/console.log "Starting the hld-root")]
+     (fn []
+       [:div.cesiumContainer opts
+        [ces/cesium-viewer {:name "hld"
+                            :opts hld-options
+                            :extents (bounds :us-hld)}]])))
+  ([] (hld-root {:class "fullSize"})))
 
 (defn legend []
   [:div.my-legend {:style {:margin-top "10px"}}
@@ -933,6 +983,17 @@
     (.readAsText reader file)
     contents))
 
+;;global toggle to allow us to accumulate unit icons over time in the main
+;;display, instead of tying their presence to pre/post transit and completion of travel.
+(defn set-retained-icons! [n]
+  (assert (or (pos? n) (zero? n)) "must be a positive integer or 0 for icon-wait time!")
+  (do (if (zero? n)
+        (swap! app-state merge {:icon-wait 0       ;;amount to wait in terminal position.
+                                :retain-icons false})
+        (swap! app-state merge {:icon-wait n       ;;amount to wait in terminal position.
+                                :retain-icons true}))
+      n))
+
 (defn change-color-scheme! [k]
   (when-let [{:keys [colors] :as scheme} (color-schemes k)]
     (swap! app-state #(merge-with merge % scheme))
@@ -999,7 +1060,8 @@
      :tightly-stacked :tightly-stacked
      :fvs  :fvs
      :fvs-geo   :fvs-geo
-     :fvs-graph :fvs-graph}
+     :fvs-graph :fvs-graph
+     :hld-geo   :hld-geo}
     :on-change #(swap! app-state assoc :layout % :layout-changed true)))
 
 (defn demo-click []
@@ -1208,6 +1270,38 @@
     [color-scheme-options]
     [layout-options]]])
 
+(defn hld-geo [ratom]
+ [:div.header {:style {:display "flex" :flex-direction "column" :width "100%" :height "auto" #_"100%"}}
+   [:div.header  {:style {:display "flex" :width "100%" :height  "auto"  :class "fullSize" :overflow "hidden"
+                   :justify-content "space-between"
+                   :font-size "xxx-large"}}
+     #_[:p {:style {:margin "0 auto" :text-align "center" }}
+      "Origin"]
+     [:p {:id "c-day" :style {:margin "0 auto" :text-align "center" }}
+      "C-Day: " @c-day]
+     #_[:p {:style {:margin "0 auto" :text-align "center" }}
+      "Transit"]]
+   [:div {:style {:flex 1  :width "100%" :align-self "center" :position "relative" :height "auto"}}
+    [hld-root]
+    #_[:div {:style {:position "absolute" :width "30%" :left "70%" :top "60%"}}
+     [cesium-inset]]]
+   [flex-legend]
+   [:div.flexControlPanel {:style {:display "flex" :width "100%" :height "auto"}}
+    [:button.cesium-button {:style {:flex "1"} :id "play" :type "button" :on-click #(play!)}
+     "play"]
+    [:button.cesium-button {:style {:flex "1"} :id "stop" :type "button" :on-click #(stop!)}
+     "stop"]
+    [:button.cesium-button {:style {:flex "1"} :id "clear-moves" :type "button" :on-click #(clear-moves!)}
+     "clear-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "random-moves" :type "button" :on-click #(random-moves!)}
+     "random-moves"]
+    [:button.cesium-button {:style {:flex "1"} :id "demo" :type "button" :on-click  demo-click}
+     "demo"]
+    [file-input]
+    [visual-options]
+    [color-scheme-options]
+    [layout-options]]])
+
 (defn ensure-layers! [obj]
   (let [res obj
         _   (when (@app-state :layout-changed)
@@ -1225,6 +1319,7 @@
       :fvs     (ensure-layers! (fvs-page ratom))
       :fvs-geo (ensure-layers! (fvs-geo ratom))
       :fvs-graph  (ensure-layers! (fvs-graph ratom))
+      :hld-geo    (ensure-layers! (hld-geo ratom))
         [:p (str "unknown layout!" layout)])))
 
 
