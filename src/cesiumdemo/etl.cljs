@@ -284,7 +284,7 @@
        :extents (reduce (fn [[l r] {:keys [cstart cstop]}]
                           [(min l cstart) (max r cstop)])
                         (let [{:keys [cstart cstop]} (first emoves)]
-                          [cstart cstop]))}
+                          [cstart cstop]) emoves)}
       (let [total-late  (count late-units)
             unit-finals (for [[uic moves] late-units]
                           (let [{:keys [cstop delay]} (->> moves (sort-by (comp - :cstop)) first)]
