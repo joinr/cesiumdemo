@@ -18,6 +18,7 @@
    {:dependencies [[org.clojure/clojurescript "1.10.844"]
                    [com.bhauman/figwheel-main "0.2.13"]
                    [cljs-bean "1.7.0"]
+                   [com.cognitect/transit-cljs "0.8.280"]
                    ;; exclude on Windows
                    #_[com.bhauman/rebel-readline-cljs "0.1.4"]]
     :resource-paths ["target"]

@@ -25,7 +25,8 @@
              "AF Active"    [0   0   0   255]
              :pax           [0, 59, 255  125]
              :equipment     [255, 165, 0, 125]
-             :ltn           [208, 217, 247 255] })
+             :ltn           [208, 217, 247 255] }
+  )
 
 (def color-schemes
   {:red          {:colors {:equipment [255 0 0 125]}}
